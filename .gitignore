@@ -21,3 +21,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# opsx workflow files
+.claude/commands/opsx/
+.opencode/command/opsx-*.md
+.github/prompts/opsx-*.prompt.md
