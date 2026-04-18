@@ -26,3 +26,4 @@ dist-ssr
 .claude/commands/opsx/
 .opencode/command/opsx-*.md
 .github/prompts/opsx-*.prompt.md
+/openspec
