@@ -19,7 +19,7 @@ func (h Handlers) CreateClass(c *gin.Context) {
 
 	resp, err := h.Classes.CreateClass(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -34,7 +34,7 @@ func (h Handlers) ApplyJoinClass(c *gin.Context) {
 
 	resp, err := h.Classes.ApplyJoinClass(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -49,7 +49,7 @@ func (h Handlers) ReviewMembership(c *gin.Context) {
 
 	resp, err := h.Classes.ReviewMembership(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)

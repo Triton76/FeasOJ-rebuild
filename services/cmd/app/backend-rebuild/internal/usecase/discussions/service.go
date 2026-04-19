@@ -1,0 +1,110 @@
+package discussions
+
+import (
+	"FeasOJ/app/backend-rebuild/internal/ports"
+	"context"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+const (
+	defaultPage  = 1
+	defaultLimit = 20
+	maxLimit     = 100
+)
+
+type Service struct{ repo Repository }
+
+func NewService(repo Repository) *Service { return &Service{repo: repo} }
+
+func (s *Service) ListDiscussions(ctx context.Context, req ports.DiscussionsQuery) ([]ports.DiscussionDTO, error) {
+	if s.repo == nil {
+		return nil, ports.ErrNotImplemented
+	}
+	page := req.Page
+	if page <= 0 {
+		page = defaultPage
+	}
+	limit := req.Limit
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	items, err := s.repo.List(ctx, (page-1)*limit, limit)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]ports.DiscussionDTO, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, toDiscussionDTO(item))
+	}
+	return resp, nil
+}
+
+func (s *Service) GetDiscussion(ctx context.Context, discussionID string) (ports.DiscussionDTO, error) {
+	if s.repo == nil {
+		return ports.DiscussionDTO{}, ports.ErrNotImplemented
+	}
+	discussionID = strings.TrimSpace(discussionID)
+	if discussionID == "" {
+		return ports.DiscussionDTO{}, ports.ErrInvalidArgument
+	}
+	d, err := s.repo.GetByID(ctx, discussionID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.DiscussionDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.DiscussionDTO{}, err
+	}
+	return toDiscussionDTO(d), nil
+}
+
+func (s *Service) CreateDiscussion(ctx context.Context, req ports.CreateDiscussionRequest) (ports.DiscussionDTO, error) {
+	if s.repo == nil {
+		return ports.DiscussionDTO{}, ports.ErrNotImplemented
+	}
+	title := strings.TrimSpace(req.Title)
+	content := strings.TrimSpace(req.Content)
+	if title == "" || content == "" {
+		return ports.DiscussionDTO{}, ports.ErrInvalidArgument
+	}
+	now := time.Now().UTC()
+	d, err := s.repo.CreateDiscussion(ctx, Discussion{ID: uuid.NewString(), Title: title, Content: content, UserID: "", CreatedAt: now})
+	if err != nil {
+		return ports.DiscussionDTO{}, err
+	}
+	return toDiscussionDTO(d), nil
+}
+
+func (s *Service) CreateComment(ctx context.Context, req ports.CreateCommentRequest) (ports.CommentDTO, error) {
+	if s.repo == nil {
+		return ports.CommentDTO{}, ports.ErrNotImplemented
+	}
+	discussionID := strings.TrimSpace(req.DiscussionID)
+	content := strings.TrimSpace(req.Content)
+	if discussionID == "" || content == "" {
+		return ports.CommentDTO{}, ports.ErrInvalidArgument
+	}
+	now := time.Now().UTC()
+	c, err := s.repo.CreateComment(ctx, Comment{ID: uuid.NewString(), DiscussionID: discussionID, Content: content, UserID: "", Profanity: false, CreatedAt: now})
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.CommentDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.CommentDTO{}, err
+	}
+	return toCommentDTO(c), nil
+}
+
+func toDiscussionDTO(d Discussion) ports.DiscussionDTO {
+	return ports.DiscussionDTO{ID: d.ID, Title: d.Title, Content: d.Content, UserID: d.UserID, Username: d.Username, Avatar: d.Avatar, CreatedAt: d.CreatedAt.UTC().Format(time.RFC3339)}
+}
+
+func toCommentDTO(c Comment) ports.CommentDTO {
+	return ports.CommentDTO{ID: c.ID, DiscussionID: c.DiscussionID, Content: c.Content, UserID: c.UserID, Username: c.Username, Avatar: c.Avatar, Profanity: c.Profanity, CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339)}
+}

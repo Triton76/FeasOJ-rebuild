@@ -19,7 +19,7 @@ func (h Handlers) ListDiscussions(c *gin.Context) {
 
 	resp, err := h.Discussions.ListDiscussions(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -28,7 +28,7 @@ func (h Handlers) ListDiscussions(c *gin.Context) {
 func (h Handlers) GetDiscussion(c *gin.Context) {
 	resp, err := h.Discussions.GetDiscussion(c.Request.Context(), c.Param("discussion_id"))
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -43,7 +43,7 @@ func (h Handlers) CreateDiscussion(c *gin.Context) {
 
 	resp, err := h.Discussions.CreateDiscussion(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -58,7 +58,7 @@ func (h Handlers) CreateComment(c *gin.Context) {
 
 	resp, err := h.Discussions.CreateComment(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)

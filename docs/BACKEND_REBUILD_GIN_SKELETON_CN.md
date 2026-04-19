@@ -41,6 +41,9 @@
 
 可选环境变量：
 - BACKEND_REBUILD_ADDR（默认 127.0.0.1:8082）
+- BACKEND_REBUILD_MYSQL_DSN（为空时服务保持 stub）
+- BACKEND_REBUILD_JWT_SECRET / BACKEND_REBUILD_JWT_ISSUER / BACKEND_REBUILD_JWT_EXPIRE_HOURS
+- BACKEND_REBUILD_CONTEST_STATUS_SCAN_SECONDS（竞赛状态自动收敛扫描间隔，默认 30 秒）
 
 ## 5.1 Docker + YAML 本地联调（Auth 实测）
 在 `services/cmd/app/backend-rebuild` 目录：

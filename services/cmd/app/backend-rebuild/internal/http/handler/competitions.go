@@ -20,7 +20,7 @@ func (h Handlers) ListContests(c *gin.Context) {
 
 	resp, err := h.Competitions.ListContests(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -35,7 +35,7 @@ func (h Handlers) GetContest(c *gin.Context) {
 
 	resp, svcErr := h.Competitions.GetContest(c.Request.Context(), id)
 	if svcErr != nil {
-		notImplemented(c)
+		fail(c, svcErr)
 		return
 	}
 	ok(c, resp)
@@ -50,7 +50,7 @@ func (h Handlers) JoinContest(c *gin.Context) {
 
 	resp, err := h.Competitions.JoinContest(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)

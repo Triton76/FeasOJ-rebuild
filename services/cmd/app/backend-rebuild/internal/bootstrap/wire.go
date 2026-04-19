@@ -9,13 +9,23 @@ import (
 	"FeasOJ/app/backend-rebuild/internal/http/router"
 	adminrepo "FeasOJ/app/backend-rebuild/internal/repository/admin"
 	authrepo "FeasOJ/app/backend-rebuild/internal/repository/auth"
+	classesrepo "FeasOJ/app/backend-rebuild/internal/repository/classes"
+	competitionsrepo "FeasOJ/app/backend-rebuild/internal/repository/competitions"
+	discussionsrepo "FeasOJ/app/backend-rebuild/internal/repository/discussions"
 	problemsrepo "FeasOJ/app/backend-rebuild/internal/repository/problems"
+	submitrecordsrepo "FeasOJ/app/backend-rebuild/internal/repository/submitrecords"
 	usersrepo "FeasOJ/app/backend-rebuild/internal/repository/users"
+	"FeasOJ/app/backend-rebuild/internal/scheduler"
 	adminusecase "FeasOJ/app/backend-rebuild/internal/usecase/admin"
 	authusecase "FeasOJ/app/backend-rebuild/internal/usecase/auth"
+	classesusecase "FeasOJ/app/backend-rebuild/internal/usecase/classes"
+	competitionsusecase "FeasOJ/app/backend-rebuild/internal/usecase/competitions"
+	discussionsusecase "FeasOJ/app/backend-rebuild/internal/usecase/discussions"
 	problemsusecase "FeasOJ/app/backend-rebuild/internal/usecase/problems"
 	"FeasOJ/app/backend-rebuild/internal/usecase/stub"
+	submitrecordsusecase "FeasOJ/app/backend-rebuild/internal/usecase/submitrecords"
 	usersusecase "FeasOJ/app/backend-rebuild/internal/usecase/users"
+	"context"
 	"log"
 	"strconv"
 	"time"
@@ -43,15 +53,25 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 		if err != nil {
 			log.Printf("[backend-rebuild] mysql connect failed, auth service stays in stub mode: %v", err)
 		} else {
+			schedulerCtx := context.Background()
 			authRepository := authrepo.NewUserRepository(db)
 			usersRepository := usersrepo.NewUserRepository(db)
 			problemsRepository := problemsrepo.NewProblemRepository(db)
 			adminRepository := adminrepo.NewUserRepository(db)
+			classesRepository := classesrepo.NewRepository(db)
+			competitionsRepository := competitionsrepo.NewRepository(db)
+			discussionsRepository := discussionsrepo.NewRepository(db)
+			submitRecordsRepository := submitrecordsrepo.NewRepository(db)
 			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL)
 			services.Users = usersusecase.NewService(usersRepository)
 			services.Problems = problemsusecase.NewService(problemsRepository)
 			services.Admin = adminusecase.NewService(adminRepository)
-			log.Println("[backend-rebuild] auth/users/problems/admin services enabled with mysql backend")
+			services.Classes = classesusecase.NewService(classesRepository)
+			services.Competitions = competitionsusecase.NewService(competitionsRepository)
+			services.Discussions = discussionsusecase.NewService(discussionsRepository)
+			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository)
+			scheduler.StartContestStatusReconciler(schedulerCtx, db, time.Duration(cfg.ContestStatusScanSeconds)*time.Second)
+			log.Println("[backend-rebuild] all phase-1 services enabled with mysql backend")
 		}
 	}
 

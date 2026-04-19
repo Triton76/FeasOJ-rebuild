@@ -14,14 +14,16 @@ import (
 const defaultAddr = "127.0.0.1:8082"
 const defaultJWTIssuer = "feasoj-backend-rebuild"
 const defaultJWTExpireHours = "72"
+const defaultContestStatusScanSeconds = 30
 const defaultConfigPath = "app/backend-rebuild/config.yaml"
 
 type Config struct {
-	Addr       string
-	MySQLDSN   string
-	JWTSecret  string
-	JWTIssuer  string
-	JWTExpireH string
+	Addr                     string
+	MySQLDSN                 string
+	JWTSecret                string
+	JWTIssuer                string
+	JWTExpireH               string
+	ContestStatusScanSeconds int
 }
 
 type fileConfig struct {
@@ -36,13 +38,17 @@ type fileConfig struct {
 		Issuer      string `yaml:"issuer"`
 		ExpireHours int    `yaml:"expire_hours"`
 	} `yaml:"jwt"`
+	Scheduler struct {
+		ContestStatusScanSeconds int `yaml:"contest_status_scan_seconds"`
+	} `yaml:"scheduler"`
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Addr:       defaultAddr,
-		JWTIssuer:  defaultJWTIssuer,
-		JWTExpireH: defaultJWTExpireHours,
+		Addr:                     defaultAddr,
+		JWTIssuer:                defaultJWTIssuer,
+		JWTExpireH:               defaultJWTExpireHours,
+		ContestStatusScanSeconds: defaultContestStatusScanSeconds,
 	}
 
 	if err := loadFromYAML(&cfg); err != nil {
@@ -87,6 +93,9 @@ func loadFromYAML(cfg *Config) error {
 	if fc.JWT.ExpireHours > 0 {
 		cfg.JWTExpireH = strconv.Itoa(fc.JWT.ExpireHours)
 	}
+	if fc.Scheduler.ContestStatusScanSeconds > 0 {
+		cfg.ContestStatusScanSeconds = fc.Scheduler.ContestStatusScanSeconds
+	}
 
 	return nil
 }
@@ -107,11 +116,19 @@ func loadFromEnv(cfg *Config) {
 	if v := os.Getenv("BACKEND_REBUILD_JWT_EXPIRE_HOURS"); v != "" {
 		cfg.JWTExpireH = v
 	}
+	if v := os.Getenv("BACKEND_REBUILD_CONTEST_STATUS_SCAN_SECONDS"); v != "" {
+		if sec, err := strconv.Atoi(v); err == nil && sec > 0 {
+			cfg.ContestStatusScanSeconds = sec
+		}
+	}
 
 	if cfg.JWTIssuer == "" {
 		cfg.JWTIssuer = defaultJWTIssuer
 	}
 	if cfg.JWTExpireH == "" {
 		cfg.JWTExpireH = defaultJWTExpireHours
+	}
+	if cfg.ContestStatusScanSeconds <= 0 {
+		cfg.ContestStatusScanSeconds = defaultContestStatusScanSeconds
 	}
 }

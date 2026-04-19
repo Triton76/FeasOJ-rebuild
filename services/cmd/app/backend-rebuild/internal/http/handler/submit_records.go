@@ -19,7 +19,7 @@ func (h Handlers) CreateSubmission(c *gin.Context) {
 
 	resp, err := h.SubmitRecords.CreateSubmission(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
@@ -34,7 +34,7 @@ func (h Handlers) ListSubmissions(c *gin.Context) {
 
 	resp, err := h.SubmitRecords.ListSubmissions(c.Request.Context(), req)
 	if err != nil {
-		notImplemented(c)
+		fail(c, err)
 		return
 	}
 	ok(c, resp)
