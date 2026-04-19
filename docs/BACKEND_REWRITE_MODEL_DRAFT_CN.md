@@ -17,7 +17,7 @@
 - 枚举值建议
 - 实体关系
 - 唯一约束 / 索引建议
-- 与旧前端兼容相关的模型约束
+- 与前端重构协作相关的模型边界
 - 第一阶段可实施范围
 
 ### 1.2 本草案不覆盖
@@ -34,7 +34,7 @@
 - 可以进行**破坏性重构**。
 - 第一阶段只聚焦：**实体模型与结构骨架**。
 - HTTP 路由、响应结构与前端联调不属于第一阶段交付物。
-- 但后续进入接口阶段时，应优先考虑尽量减少对旧前端的改动。
+- 后续进入接口阶段时，前端允许大改，仅需保持页面风格与核心信息架构大致一致。
 - 数据库第一阶段明确以 **MySQL** 作为主数据库。
 
 ---
@@ -62,6 +62,7 @@
 - 使用统一的 `class_memberships` 表
 - 通过 `role_in_class` 表示用户在班级中的身份
 - 第一版一个班级只允许**一个教师**
+- 通过数据库唯一索引保证“一个班级仅一个教师”
 
 ### 2.4 资源归属
 - `problems`：教师拥有，`class_id` 可空，可选绑定班级
@@ -70,17 +71,15 @@
 - `problems.status` 保留三档：`draft` / `published` / `archived`
 - `contests.visibility` 同样保留三档：`public` / `class` / `private`
 - 题目与竞赛关系底层统一使用 `contest_problems` 关联表
-- 第一阶段**不**保留单个 `competition_id` 兼容字段；若旧前端仍依赖该字段，需要同步修改前端读写方式
+- 第一阶段**不**保留单个 `competition_id` 兼容字段；若迁移期页面仍依赖该字段，需要同步修改前端读写方式
 
 ### 2.5 兼容策略
-- 第一阶段只定义模型层兼容约束，不冻结 HTTP 设计
+- 第一阶段只定义模型层约束，不冻结 HTTP 设计
 - 不引入 `display_name`，第一版统一以 `username` 作为登录名与展示名
-- `time_limit` / `memory_limit` 的对外兼容目标保留为带单位字符串，例如：`1000ms` / `256MB`
-- 用户核心字段语义尽量保持：`id/username/email/avatar/synopsis/score/role/created_at`
-- 题目核心字段语义尽量保持：`id/title/content/difficulty/time_limit/memory_limit/input/output`
-- 竞赛核心字段语义尽量保持：`id/title/subtitle/announcement/status/encrypted/start_at/end_at`
-- 讨论区核心字段语义尽量保持：discussion 的 `id/title/content/user_id/username/avatar/created_at`，comment 的 `id/discussion_id/content/user_id/username/avatar/created_at/profanity`
-- 具体 HTTP 路由、响应包装结构与旧前端契约兼容，留待后续接口阶段单独设计
+- `time_limit` / `memory_limit` 推荐以新模型语义输出，单位格式在接口阶段统一拍板
+- 用户/题目/竞赛/讨论区/提交等 DTO 字段以新接口契约为准
+- 前端按新接口进行重构，必要时在过渡期提供少量临时映射
+- 具体 HTTP 路由与响应结构在接口阶段单独设计，不以旧前端契约为默认目标
 
 ### 2.6 第一版赛制范围
 - 第一版内建 `rule_type`：
@@ -104,7 +103,7 @@
   - `scheduled`
   - `running`
   - `ended`
-- 对旧前端的数字映射约定为：
+- 迁移窗口内的数字映射约定为：
   - `draft = 0`
   - `scheduled = 1`
   - `running = 2`
@@ -112,6 +111,14 @@
 - `contests` 需要保留：
   - `is_encrypted`
   - `password_hash`
+
+### 2.8.1 竞赛状态驱动方式
+- `contests.status` 由时间自动驱动，不以手工改状态作为主流程
+- 推荐规则：
+  - `draft`：未发布草稿，可不填 `start_at` / `end_at`
+  - `scheduled`：已发布且 `now < start_at`
+  - `running`：`start_at <= now < end_at`
+  - `ended`：`now >= end_at`
 
 ### 2.9 题目用例模型
 - 第一版将 `test_cases` 一并纳入模型草案
@@ -163,8 +170,9 @@
 ### 3.3 资源必须可归属
 所有需要管理权限的核心资源都必须具备明确归属信息。
 
-### 3.4 DTO 可兼容，底层模型不强求兼容旧库
-数据库字段名可按新模型定义，但 DTO 层应为旧前端提供接近原有语义的数据形状。
+### 3.4 DTO 新契约优先，底层模型不强求兼容旧库
+数据库字段名按新模型定义，DTO 层以新接口契约为准。
+如需短期迁移，可增加可回收的临时兼容映射，但不作为长期约束。
 
 ---
 
@@ -208,8 +216,8 @@
 | password_hash | varchar(255) | 是 | 密码哈希 |
 | role | enum/string | 是 | `student` / `teacher` / `admin` |
 | avatar | varchar(255) | 否 | 头像地址 |
-| synopsis | text | 否 | 个人简介，兼容旧前端 |
-| score | int | 是 | 用户总分，第一阶段为兼容排行榜与管理页保留 |
+| synopsis | text | 否 | 个人简介 |
+| score | int | 是 | 用户总分（排行榜与管理页核心字段） |
 | status | enum/string | 是 | `active` / `banned` |
 | created_at | datetime | 是 | 创建时间 |
 | updated_at | datetime | 是 | 更新时间 |
@@ -227,8 +235,8 @@
 - index: `role`
 - index: `status`
 
-### 兼容说明
-对旧前端至少应能投影出：
+### 接口对齐说明
+用户 DTO 以新契约为准，建议至少提供：
 
 ```json
 {
@@ -306,6 +314,8 @@
 - unique index: `(class_id, user_id)`
 - index: `user_id`
 - index: `(class_id, role_in_class, status)`
+- unique index（条件唯一）: 教师记录每班仅 1 条
+  - MySQL 推荐实现：增加生成列 `teacher_class_id = IF(role_in_class = 'teacher', class_id, NULL)`，并对 `teacher_class_id` 建 unique index
 
 ### 说明
 第一版建议约定：
@@ -350,8 +360,8 @@
 - index: `(visibility, status)`
 - index: `difficulty`
 
-### 兼容说明
-DTO 层建议继续提供这些字段语义：
+### 接口对齐说明
+题目 DTO 建议稳定提供这些字段语义：
 
 ```json
 {
@@ -366,7 +376,7 @@ DTO 层建议继续提供这些字段语义：
 }
 ```
 
-说明：数据库可存 `time_limit_ms` / `memory_limit_mb`，对外再映射为旧前端可接受格式。
+说明：数据库可存 `time_limit_ms` / `memory_limit_mb`，对外字段格式由新接口契约统一定义。
 
 ---
 
@@ -414,7 +424,7 @@ DTO 层建议继续提供这些字段语义：
 |---|---|---:|---|
 | id | bigint | 是 | 主键，自增 |
 | title | varchar(255) | 是 | 标题 |
-| subtitle | varchar(255) | 否 | 副标题，兼容旧前端 |
+| subtitle | varchar(255) | 否 | 副标题 |
 | description | longtext/text | 否 | 详细描述 |
 | announcement | longtext/text | 否 | 公告 |
 | owner_user_id | uuid | 是 | 竞赛拥有者 |
@@ -436,6 +446,7 @@ DTO 层建议继续提供这些字段语义：
 - `status` 非空
 - `is_encrypted` 非空
 - `auto_score` 非空
+- 状态由时间自动驱动：非 `draft` 状态下 `start_at` / `end_at` 必填，且 `start_at < end_at`
 
 ### 索引建议
 - index: `owner_user_id`
@@ -444,8 +455,8 @@ DTO 层建议继续提供这些字段语义：
 - index: `rule_type`
 - index: `(start_at, end_at)`
 
-### 兼容说明
-DTO 层建议保留这些核心字段语义：
+### 接口对齐说明
+竞赛 DTO 建议稳定提供这些核心字段语义：
 
 ```json
 {
@@ -461,9 +472,9 @@ DTO 层建议保留这些核心字段语义：
 ```
 
 说明：
-- 底层 `status` 使用字符串枚举
-- 若旧前端依赖数字状态，DTO 层按如下规则映射：`draft=0`、`scheduled=1`、`running=2`、`ended=3`
-- 旧前端中的 `encrypted` 可映射自 `is_encrypted`
+- 底层 `status` 使用字符串枚举。
+- 若迁移窗口内存在历史页面依赖，可临时映射：`draft=0`、`scheduled=1`、`running=2`、`ended=3`。
+- `encrypted` 可由 `is_encrypted` 映射，但建议前端逐步收敛到新字段命名。
 
 ---
 
@@ -520,8 +531,8 @@ DTO 层建议保留这些核心字段语义：
 - index: `user_id`
 - index: `created_at`
 
-### 兼容说明
-对外至少应能投影旧前端常见字段：`id` / `title` / `content` / `user_id` / `username` / `avatar` / `created_at`。
+### 接口对齐说明
+对外建议稳定提供字段：`id` / `title` / `content` / `user_id` / `username` / `avatar` / `created_at`。
 
 ---
 
@@ -538,7 +549,7 @@ DTO 层建议保留这些核心字段语义：
 | discussion_id | uuid | 是 | 所属讨论帖 |
 | content | longtext/text | 是 | 评论内容 |
 | user_id | uuid | 是 | 评论用户 |
-| profanity | bool | 是 | 是否命中敏感词，第一阶段为兼容旧前端保留 |
+| profanity | bool | 是 | 是否命中敏感词（讨论审核辅助字段） |
 | created_at | datetime | 是 | 创建时间 |
 | updated_at | datetime | 是 | 更新时间 |
 
@@ -553,8 +564,8 @@ DTO 层建议保留这些核心字段语义：
 - index: `user_id`
 - index: `created_at`
 
-### 兼容说明
-对外至少应能投影旧前端常见字段：`id` / `discussion_id` / `content` / `user_id` / `username` / `avatar` / `created_at` / `profanity`。
+### 接口对齐说明
+对外建议稳定提供字段：`id` / `discussion_id` / `content` / `user_id` / `username` / `avatar` / `created_at` / `profanity`。
 
 ---
 
@@ -627,8 +638,8 @@ DTO 层建议保留这些核心字段语义：
 - index: `(contest_id, submitted_at)`
 - index: `result`
 
-### 兼容说明
-DTO 层至少应能提供与旧前端相近的基础语义：
+### 接口对齐说明
+DTO 层建议提供以下基础语义：
 
 ```json
 {
@@ -641,7 +652,7 @@ DTO 层至少应能提供与旧前端相近的基础语义：
 }
 ```
 
-说明：数据库层可使用 `submitted_at`，DTO 层按需要映射成旧前端使用的时间字段。
+说明：数据库层可使用 `submitted_at`，DTO 层时间字段命名由新接口契约统一。
 
 ---
 
@@ -678,9 +689,9 @@ discussions (uuid)
 ```
 ---
 
-## 7. 兼容边界说明
+## 7. 前后端协作边界说明
 
-### 7.1 需要尽量维持的核心语义
+### 7.1 建议优先稳定的核心语义（用于前端重构对齐）
 #### 用户
 - `id`
 - `username`
@@ -729,6 +740,11 @@ discussions (uuid)
 - 旧接口路径
 - 旧权限判定逻辑
 - 旧响应包装格式
+- 旧前端历史字段命名与历史状态编码
+
+补充说明：
+- 接口目标为新语义清晰与可维护，前端按新契约重构。
+- 页面层目标为“风格与核心信息架构大致一致”，不要求实现细节一致。
 
 ---
 
@@ -747,6 +763,10 @@ discussions (uuid)
 - service 接口与空实现骨架
 - DTO / VO / request / response struct
 
+补充约束：
+- 第一阶段允许定义接口与结构体
+- 第一阶段不新增可调用业务路径
+
 ### 8.3 可以预留但不实现业务的模块
 - auth module 基础目录结构
 - class module 基础目录结构
@@ -754,6 +774,10 @@ discussions (uuid)
 - contest module 基础目录结构
 - discussion module 基础目录结构
 - submission module 基础目录结构
+
+归档约定：
+- 现有工程仅作参考，统一放入新目录 `archive/`
+- 第一阶段骨架按本草案重新生成
 
 ---
 
@@ -778,7 +802,7 @@ discussions (uuid)
 - 竞赛 scoreboard / standings 是否需要单独实体
 - 题目标签、分类、来源是否需要独立表
 - 管理员初始化细节与教师创建流程的接口设计
-- 前端从单个 `competition_id` 迁移到题目-竞赛关联列表的具体改造方式
+- 前端在保持页面风格前提下的全量重构计划（路由、状态管理、API 适配层）
 
 ---
 
@@ -801,3 +825,52 @@ discussions (uuid)
 - 状态：**待继续审核**
 - 用途：**第一阶段模型落地依据**
 - 当前版本：**v1**
+
+---
+
+## 13. 追加拍板（2026-04-19）
+
+以下决议用于消除第一阶段实施歧义，优先级高于本文中“建议/推荐”表述。
+
+### 13.1 UUID 生成策略
+- UUID 统一由应用侧生成（Go 服务生成），数据库不负责生成 UUID。
+- 第一阶段默认使用字符串 UUID（`char(36)` 语义），后续如需压缩为 `binary(16)` 再单独评审迁移。
+
+### 13.2 字符集与大小写敏感策略
+- 字符集延续现有工程习惯：MySQL 使用 `utf8mb4`。
+- 大小写敏感行为参照现网/原工程默认行为，不在第一阶段额外引入复杂 collation 规则。
+- 若后续出现用户名/邮箱大小写冲突争议，再做专项修订。
+
+### 13.3 时间与时区
+- 所有时间字段按 UTC 存储与传递。
+- 连接层与应用层统一按 UTC 处理，避免混用本地时区。
+
+### 13.4 数据库约束策略（第一阶段）
+- 采用“轻约束”原则：
+  - 保留主键、必要唯一索引、必要非空约束。
+  - 不追求在数据库侧实现复杂业务约束（如复杂状态流转、复杂条件唯一）。
+- 外键约束第一阶段可不启用，主要在应用层校验。
+- 后续可以补 migration 增加外键/约束，但新增前需先清理历史脏数据。
+
+### 13.5 枚举落地
+- 第一阶段优先使用 MySQL `ENUM` 落地已拍板的固定枚举字段。
+- 新增或变更枚举值通过 migration 管理，不在运行时动态扩展。
+
+### 13.6 竞赛状态策略（自动任务 + 幂等收敛）
+- 第一阶段实现自动状态驱动任务（定时扫描）。
+- 每轮任务不依赖“上一次任务是否成功”，而是直接按当前时间与 `start_at/end_at` 计算目标状态（`desired_status`），然后将数据收敛到目标状态。
+- `contests.status` 继续持久化保存，但其值由自动任务周期性校正。
+- 推荐判定规则：
+  - `draft`：未发布草稿（可无 `start_at/end_at`）
+  - `scheduled`：已发布且 `now < start_at`
+  - `running`：`start_at <= now < end_at`
+  - `ended`：`now >= end_at`
+- 推荐更新策略：`UPDATE ... WHERE status <> desired_status`，保证幂等；任务重复执行不会产生额外副作用。
+- 允许“跨状态修复”（例如异常情况下直接 `scheduled -> ended`），不强制逐级跳转，从而天然具备失败恢复能力。
+- 仅在需要触发一次性副作用（如发通知）时，才基于“旧状态 -> 新状态”判断是否触发，并加去重键防重放。
+
+### 13.7 DTO 与前端兼容策略（简化）
+- 不做“长期双向兼容映射”作为默认策略。
+- 优先采用新模型字段语义，允许并建议前端按新契约进行结构化重构。
+- 前端重构以“页面风格与核心信息架构大致一致”为边界，不以旧实现细节为约束。
+- 仅在迁移窗口内为少数字段提供临时映射，并在联调后移除。
