@@ -13,7 +13,7 @@ import (
 
 const defaultAddr = "127.0.0.1:8082"
 const defaultJWTIssuer = "feasoj-backend-rebuild"
-const defaultJWTExpireHours = "72"
+const defaultJWTExpireHours = "2"
 const defaultContestStatusScanSeconds = 30
 const defaultConfigPath = "app/backend-rebuild/config.yaml"
 

@@ -138,37 +138,6 @@ func (s *Service) Verify(ctx context.Context) (ports.VerifyResponse, error) {
 	return ports.VerifyResponse{User: toUserDTO(user)}, nil
 }
 
-func (s *Service) ResetPassword(ctx context.Context, req ports.ResetPasswordRequest) error {
-	if s.repo == nil {
-		return ports.ErrNotImplemented
-	}
-
-	email := strings.TrimSpace(req.Email)
-	password := strings.TrimSpace(req.Password)
-	rePassword := strings.TrimSpace(req.RePassword)
-	if email == "" || req.Captcha == "" || password == "" || rePassword == "" {
-		return ports.ErrInvalidArgument
-	}
-	if password != rePassword || len(password) < 6 {
-		return ports.ErrInvalidArgument
-	}
-
-	hash := passwordutil.EncryptPassword(password)
-	if hash == "" {
-		return errors.New("failed to hash password")
-	}
-
-	affected, err := s.repo.UpdatePasswordByEmail(ctx, email, hash, time.Now().UTC())
-	if err != nil {
-		return err
-	}
-	if !affected {
-		return ports.ErrNotFound
-	}
-
-	return nil
-}
-
 func toUserDTO(u User) ports.UserDTO {
 	return ports.UserDTO{
 		ID:       u.ID,

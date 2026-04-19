@@ -125,7 +125,7 @@ onMounted(async () => {
       <!-- 底部导航项目 -->
       <div class="nav-section bottom-section">
         <!-- 管理员入口 -->
-        <v-list-item v-if="privilege === 1" rounded="lg" prepend-icon="mdi-shield-crown-outline"
+        <v-list-item v-if="privilege === 'admin'" rounded="lg" prepend-icon="mdi-shield-crown-outline"
           @click="router.push('/admin')" value="admin" base-color="primary" class="nav-item admin-item"
           :class="{ 'nav-item-active': isCurrentPage('/admin') }" :active="isCurrentPage('/admin')">
           <template v-slot:title>

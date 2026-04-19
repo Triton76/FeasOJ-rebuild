@@ -20,14 +20,13 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 
 	api.POST("/auth/register", h.Register)
 	api.POST("/auth/login", h.Login)
-	api.POST("/auth/password/reset", h.ResetPassword)
 
 	authed := api.Group("")
 	authed.Use(middleware.HeaderVerify(cfg.JWTSecret))
 	authed.GET("/auth/verify", h.Verify)
 
 	authed.GET("/users/:user_id", h.GetProfile)
-	authed.PATCH("/users/:user_id", h.UpdateProfile)
+	authed.PATCH("/profile", h.UpdateProfile)
 	authed.GET("/ranking", h.ListRanking)
 
 	authed.POST("/classes", h.CreateClass)

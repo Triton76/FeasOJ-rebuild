@@ -25,7 +25,13 @@ func (h Handlers) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.Users.UpdateProfile(c.Request.Context(), c.Param("user_id"), req)
+	userID := c.GetString("auth_user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+
+	resp, err := h.Users.UpdateProfile(c.Request.Context(), userID, req)
 	if err != nil {
 		fail(c, err)
 		return

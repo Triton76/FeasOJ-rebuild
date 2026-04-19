@@ -46,10 +46,6 @@ func (AuthService) Verify(context.Context) (ports.VerifyResponse, error) {
 	return ports.VerifyResponse{}, ports.ErrNotImplemented
 }
 
-func (AuthService) ResetPassword(context.Context, ports.ResetPasswordRequest) error {
-	return ports.ErrNotImplemented
-}
-
 type UsersService struct{}
 
 func (UsersService) GetProfile(context.Context, string) (ports.UserDTO, error) {

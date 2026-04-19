@@ -41,6 +41,13 @@ func (h Handlers) CreateDiscussion(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("auth_user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+
+	req.UserID = userID
 	resp, err := h.Discussions.CreateDiscussion(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)
@@ -56,6 +63,13 @@ func (h Handlers) CreateComment(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("auth_user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+
+	req.UserID = userID
 	resp, err := h.Discussions.CreateComment(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)

@@ -40,6 +40,10 @@ const login = async () => {
     networkloading.value = false;
   }
 }
+
+const onForgotPassword = () => {
+  showAlert(t('message.failed') + ': reset password is disabled in rebuild backend', '');
+}
 </script>
 
 <template>
@@ -63,7 +67,7 @@ const login = async () => {
         <v-btn type="submit" color="primary" rounded="xl">{{ $t('message.login') }}</v-btn>
         <v-btn color="primary" variant="text" rounded="xl" @click="$router.push('/register')">{{ $t('message.register')
         }}</v-btn>
-        <v-btn color="primary" variant="text" rounded="xl" @click="$router.push('/reset')">{{ $t('message.forget')
+        <v-btn color="primary" variant="text" rounded="xl" @click="onForgotPassword">{{ $t('message.forget')
         }}</v-btn>
       </v-row>
     </v-form>
