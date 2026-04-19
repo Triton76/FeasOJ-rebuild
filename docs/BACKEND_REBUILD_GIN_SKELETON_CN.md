@@ -42,6 +42,21 @@
 可选环境变量：
 - BACKEND_REBUILD_ADDR（默认 127.0.0.1:8082）
 
+## 5.1 Docker + YAML 本地联调（Auth 实测）
+在 `services/cmd/app/backend-rebuild` 目录：
+
+1. 拉取并启动 MySQL：
+	- `docker compose -f docker-compose.yaml up -d`
+2. 使用 YAML 配置（默认读取 `config.yaml`）：
+	- 参考 `config-example.yaml`
+	- 可通过 `BACKEND_REBUILD_CONFIG` 指定其他 YAML 路径
+3. 启动后端：
+	- 回到 `services/cmd` 执行 `go run ./app/backend-rebuild`
+
+优先级说明：
+- 环境变量优先于 YAML 配置
+- 未配置项回退到默认值
+
 ## 6. 兼容约束
 - 接口与字段以新模型语义为准，不再以旧前端契约为默认约束
 - 前端可按新接口重构，但页面风格与核心信息架构需保持大致一致

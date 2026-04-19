@@ -56,6 +56,24 @@
 - 回滚方案：删除新增索引
 - 风险备注：索引命名需与实际 SQL 保持一致
 
+### 0003
+- 版本号：`0003`
+- 文件：`services/cmd/app/backend-rebuild/migrations/0003_create_phase1_core_tables.sql`
+- 目的：按重写草案落地第一阶段核心实体
+- 变更内容：创建 `users`、`classes`、`class_memberships`、`problems`、`test_cases`、`contest_problems`、`discussions`、`comments`、`contest_participants`、`submissions`
+- 兼容性：向后兼容（新增表）
+- 回滚方案：开发环境可按依赖顺序删除新增表
+- 风险备注：采用 ENUM + 轻约束策略，复杂业务规则不在数据库层实现
+
+### 0004
+- 版本号：`0004`
+- 文件：`services/cmd/app/backend-rebuild/migrations/0004_align_contests_phase1_schema.sql`
+- 目的：将示例 `contests` 结构升级到第一阶段正式模型
+- 变更内容：补充 `owner_user_id`、`class_id`、`visibility`、`rule_type`、`is_encrypted`、`password_hash`、`auto_score` 等字段并增加索引
+- 兼容性：向后兼容（扩展字段）
+- 回滚方案：删除新增字段与索引（仅开发环境建议）
+- 风险备注：旧示例数据可能不满足新字段默认语义，需在接口层做状态收敛与校验
+
 ---
 
 ## 5. 执行流程建议

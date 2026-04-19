@@ -1,0 +1,10 @@
+server:
+  addr: 127.0.0.1:8082
+
+mysql:
+  dsn: feasoj:feasoj@tcp(127.0.0.1:3307)/feasoj_rebuild?charset=utf8mb4&parseTime=True&loc=UTC
+
+jwt:
+  secret: local-dev-secret
+  issuer: feasoj-backend-rebuild
+  expire_hours: 72
