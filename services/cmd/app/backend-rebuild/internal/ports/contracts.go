@@ -10,7 +10,6 @@ type AuthService interface {
 	Register(ctx context.Context, req RegisterRequest) (UserDTO, error)
 	Login(ctx context.Context, req LoginRequest) (LoginResponse, error)
 	Verify(ctx context.Context) (VerifyResponse, error)
-	ResetPassword(ctx context.Context, req ResetPasswordRequest) error
 }
 
 type UsersService interface {
@@ -73,13 +72,6 @@ type VerifyResponse struct {
 	User UserDTO `json:"user"`
 }
 
-type ResetPasswordRequest struct {
-	Email      string `json:"email"`
-	Captcha    string `json:"captcha"`
-	Password   string `json:"password"`
-	RePassword string `json:"re_password"`
-}
-
 type UserDTO struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
@@ -110,6 +102,7 @@ type CreateClassRequest struct {
 	Name        string `json:"name"`
 	Code        string `json:"code"`
 	Description string `json:"description"`
+	OwnerUserID string `json:"owner_user_id"`
 }
 
 type ApplyJoinClassRequest struct {
@@ -216,6 +209,7 @@ type DiscussionDTO struct {
 type CreateDiscussionRequest struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	UserID  string `json:"user_id"`
 }
 
 type CommentDTO struct {
@@ -232,6 +226,7 @@ type CommentDTO struct {
 type CreateCommentRequest struct {
 	DiscussionID string `json:"discussion_id"`
 	Content      string `json:"content"`
+	UserID       string `json:"user_id"`
 }
 
 type CreateSubmissionRequest struct {
@@ -239,6 +234,7 @@ type CreateSubmissionRequest struct {
 	ContestID  int64  `json:"contest_id"`
 	Language   string `json:"language"`
 	SourceCode string `json:"source_code"`
+	UserID     string `json:"user_id"`
 }
 
 type SubmissionsQuery struct {

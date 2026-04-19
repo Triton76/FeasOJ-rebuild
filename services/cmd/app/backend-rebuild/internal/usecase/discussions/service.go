@@ -70,11 +70,12 @@ func (s *Service) CreateDiscussion(ctx context.Context, req ports.CreateDiscussi
 	}
 	title := strings.TrimSpace(req.Title)
 	content := strings.TrimSpace(req.Content)
-	if title == "" || content == "" {
+	userID := strings.TrimSpace(req.UserID)
+	if title == "" || content == "" || userID == "" {
 		return ports.DiscussionDTO{}, ports.ErrInvalidArgument
 	}
 	now := time.Now().UTC()
-	d, err := s.repo.CreateDiscussion(ctx, Discussion{ID: uuid.NewString(), Title: title, Content: content, UserID: "", CreatedAt: now})
+	d, err := s.repo.CreateDiscussion(ctx, Discussion{ID: uuid.NewString(), Title: title, Content: content, UserID: userID, CreatedAt: now})
 	if err != nil {
 		return ports.DiscussionDTO{}, err
 	}
@@ -87,11 +88,12 @@ func (s *Service) CreateComment(ctx context.Context, req ports.CreateCommentRequ
 	}
 	discussionID := strings.TrimSpace(req.DiscussionID)
 	content := strings.TrimSpace(req.Content)
-	if discussionID == "" || content == "" {
+	userID := strings.TrimSpace(req.UserID)
+	if discussionID == "" || content == "" || userID == "" {
 		return ports.CommentDTO{}, ports.ErrInvalidArgument
 	}
 	now := time.Now().UTC()
-	c, err := s.repo.CreateComment(ctx, Comment{ID: uuid.NewString(), DiscussionID: discussionID, Content: content, UserID: "", Profanity: false, CreatedAt: now})
+	c, err := s.repo.CreateComment(ctx, Comment{ID: uuid.NewString(), DiscussionID: discussionID, Content: content, UserID: userID, Profanity: false, CreatedAt: now})
 	if errors.Is(err, ports.ErrNotFound) {
 		return ports.CommentDTO{}, ports.ErrNotFound
 	}

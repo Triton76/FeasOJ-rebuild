@@ -48,17 +48,3 @@ func (h Handlers) Verify(c *gin.Context) {
 	}
 	ok(c, resp)
 }
-
-func (h Handlers) ResetPassword(c *gin.Context) {
-	var req ports.ResetPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.Auth.ResetPassword(c.Request.Context(), req); err != nil {
-		fail(c, err)
-		return
-	}
-	noContent(c)
-}

@@ -6,10 +6,12 @@ package ports
 import "errors"
 
 var (
-	ErrNotImplemented  = errors.New("not implemented")
-	ErrInvalidArgument = errors.New("invalid argument")
-	ErrUnauthorized    = errors.New("unauthorized")
-	ErrForbidden       = errors.New("forbidden")
-	ErrNotFound        = errors.New("not found")
-	ErrConflict        = errors.New("conflict")
+	ErrNotImplemented      = errors.New("not implemented")
+	ErrInvalidArgument     = errors.New("invalid argument")
+	ErrUnauthorized        = errors.New("unauthorized")
+	ErrForbidden           = errors.New("forbidden")
+	ErrNotFound            = errors.New("not found")
+	ErrConflict            = errors.New("conflict")
+	ErrDuplicateSubmission = errors.New("submission_id already in queue")
+	ErrQueueEmpty          = errors.New("queue is empty")
 )

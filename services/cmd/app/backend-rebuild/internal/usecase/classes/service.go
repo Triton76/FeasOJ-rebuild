@@ -24,7 +24,8 @@ func (s *Service) CreateClass(ctx context.Context, req ports.CreateClassRequest)
 	}
 	name := strings.TrimSpace(req.Name)
 	code := strings.TrimSpace(req.Code)
-	if name == "" || code == "" {
+	ownerUserID := strings.TrimSpace(req.OwnerUserID)
+	if name == "" || code == "" || ownerUserID == "" {
 		return ports.ClassDTO{}, ports.ErrInvalidArgument
 	}
 
@@ -34,7 +35,7 @@ func (s *Service) CreateClass(ctx context.Context, req ports.CreateClassRequest)
 		Name:        name,
 		Code:        code,
 		Description: strings.TrimSpace(req.Description),
-		OwnerUserID: "",
+		OwnerUserID: ownerUserID,
 		Status:      "active",
 		CreatedAt:   now,
 		UpdatedAt:   now,

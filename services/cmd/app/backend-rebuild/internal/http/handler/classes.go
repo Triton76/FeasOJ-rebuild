@@ -17,6 +17,13 @@ func (h Handlers) CreateClass(c *gin.Context) {
 		return
 	}
 
+	ownerUserID := c.GetString("auth_user_id")
+	if ownerUserID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+
+	req.OwnerUserID = ownerUserID
 	resp, err := h.Classes.CreateClass(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)
@@ -32,6 +39,13 @@ func (h Handlers) ApplyJoinClass(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("auth_user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+
+	req.UserID = userID
 	resp, err := h.Classes.ApplyJoinClass(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)

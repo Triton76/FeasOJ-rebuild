@@ -7,6 +7,7 @@ import (
 	"FeasOJ/app/backend-rebuild/internal/config"
 	"FeasOJ/app/backend-rebuild/internal/http/handler"
 	"FeasOJ/app/backend-rebuild/internal/http/router"
+	"FeasOJ/app/backend-rebuild/internal/queue"
 	adminrepo "FeasOJ/app/backend-rebuild/internal/repository/admin"
 	authrepo "FeasOJ/app/backend-rebuild/internal/repository/auth"
 	classesrepo "FeasOJ/app/backend-rebuild/internal/repository/classes"
@@ -62,6 +63,10 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			competitionsRepository := competitionsrepo.NewRepository(db)
 			discussionsRepository := discussionsrepo.NewRepository(db)
 			submitRecordsRepository := submitrecordsrepo.NewRepository(db)
+
+			// 初始化提交队列（内存实现）
+			submissionQueue := queue.NewMemorySubmissionQueue()
+
 			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL)
 			services.Users = usersusecase.NewService(usersRepository)
 			services.Problems = problemsusecase.NewService(problemsRepository)
@@ -69,7 +74,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			services.Classes = classesusecase.NewService(classesRepository)
 			services.Competitions = competitionsusecase.NewService(competitionsRepository)
 			services.Discussions = discussionsusecase.NewService(discussionsRepository)
-			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository)
+			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository, submissionQueue)
 			scheduler.StartContestStatusReconciler(schedulerCtx, db, time.Duration(cfg.ContestStatusScanSeconds)*time.Second)
 			log.Println("[backend-rebuild] all phase-1 services enabled with mysql backend")
 		}
