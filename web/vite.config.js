@@ -6,10 +6,12 @@ import compression from 'vite-plugin-compression';
 export default defineConfig({
   base: './',
   server: {
+    host: '0.0.0.0',
+    port: 5173,
     cors: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:37882',
+        target: 'http://127.0.0.1:8082',
         changeOrigin: true,
       },
     },

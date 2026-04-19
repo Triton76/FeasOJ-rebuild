@@ -1,72 +1,98 @@
 import axios from 'axios';
 import { apiUrl } from '../axios';
-import { language } from '../account';
+import { language, userId, userName } from '../account';
+
+const buildAuthHeader = (rawToken) => {
+    const t = (rawToken || '').trim();
+    if (!t) return '';
+    return t.startsWith('Bearer ') ? t : `Bearer ${t}`;
+}
 
 // 注册
 export const registerRequest = async (username, password, email, vcode) => {
-    return await axios.post(`${apiUrl}/register`, {
+    const resp = await axios.post(`${apiUrl}/auth/register`, {
         email: email,
         username: username,
         password: password,
-        captcha: vcode,
     },{
         headers: {
             "Accept-Language": language.value
         }
     });
+    return {
+        ...resp,
+        data: {
+            ...resp.data,
+            message: resp.data?.message || 'success'
+        }
+    }
 }
 
 // 登录
 export const loginRequest = async (username, password) => {
-    return await axios.get(`${apiUrl}/login`, {
-        params: {
+    const resp = await axios.post(`${apiUrl}/auth/login`, {
             username: username,
             password: password
-        },
+        }, {
         headers: {
             "Accept-Language": language.value,
         }
-    })
+    });
+    return {
+        ...resp,
+        data: {
+            ...resp.data,
+            token: resp.data?.data?.token || '',
+            message: resp.data?.message || 'success'
+        }
+    }
 }
 
 // 获取验证码
 export const getCaptchaCode = async (email,iscreate) => {
-    return await axios.get(`${apiUrl}/captcha`, {
-        params: {
-            email: email
-        },
-        headers: {
-            is_create: iscreate,
-            "Accept-Language": language.value
+    // Rebuild 后端当前阶段不提供验证码接口，保留函数签名避免页面崩溃
+    return {
+        data: {
+            message: 'captcha endpoint is not available in rebuild backend'
         }
-    });
+    }
 }
 
 // 验证个人用户信息
 export const verifyUserInfo = async (username, token) => {
-    return await axios.get(`${apiUrl}/verify`, {
+    const resp = await axios.get(`${apiUrl}/auth/verify`, {
         headers: {
-            Username: encodeURIComponent(username),
-            Authorization: token,
+            Authorization: buildAuthHeader(token),
             "Accept-Language": language.value
         }
     });
+    return {
+        ...resp,
+        data: {
+            ...resp.data,
+            data: resp.data?.data?.user || resp.data?.data || {},
+            message: resp.data?.message || 'success'
+        }
+    }
 }
 
 // 获取用户信息
 export const getUserInfo = async (username) => {
-    return await axios.get(`${apiUrl}/users/${username}`);
+    const target = username === userName.value ? userId.value : username;
+    return await axios.get(`${apiUrl}/users/${target}`, {
+        headers: {
+            Authorization: buildAuthHeader(localStorage.getItem('token') || ''),
+            "Accept-Language": language.value
+        }
+    });
 }
 
 // 修改密码
 export const updatePassword = async (email, vcode, newPassword) => {
-    return await axios.post(`${apiUrl}/users/password`, {
-        email: email,
-        captcha: vcode,
-        new_password: newPassword
-    },{
-        headers: {
-            "Accept-Language": language.value
+    // 决议已下线重置密码能力，这里返回可读提示
+    return {
+        data: {
+            message: 'reset password is disabled in rebuild backend'
         }
-    });
+    }
 }

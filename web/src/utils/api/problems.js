@@ -1,47 +1,65 @@
 import axios from 'axios';
 import { apiUrl } from '../axios';
-import { language, userName, token } from '../account';
+import { language, token } from '../account';
+
+const authHeaders = () => ({
+    Authorization: token.value ? `Bearer ${token.value}` : '',
+    "Accept-Language": language.value
+});
 
 // 获取题目列表
 export const getAllProblems = async () => {
     return await axios.get(`${apiUrl}/problems`, {
         headers: {
-            Username: encodeURIComponent(userName.value),
-            Authorization: token.value
+            ...authHeaders()
         }
     });
 }
 
 // 获取每日一题
 export const getDailyProblem = async () => {
-    return await axios.get(`${apiUrl}/problems/daily`, {
+    const resp = await axios.get(`${apiUrl}/problems`, {
         headers: {
-            Username: encodeURIComponent(userName.value),
-            Authorization: token.value
+            ...authHeaders()
         }
     });
+    const list = resp.data?.data || [];
+    return {
+        ...resp,
+        data: {
+            ...resp.data,
+            data: list.length > 0 ? list[0] : null
+        }
+    }
 }
 
 // 获取题目详细信息
 export const getPbDetails = async (pid) => {
     return await axios.get(`${apiUrl}/problems/${pid}`, {
         headers: {
-            Username: encodeURIComponent(userName.value),
-            Authorization: token.value
+            ...authHeaders()
         }
     });
 }
 
 // 提交代码文件
 export const uploadCode = async (file, pid) => {
-    let formData = new FormData();
-    formData.append('code', file);
-    return await axios.post(`${apiUrl}/problems/${pid}/code`, formData, {
+    const sourceCode = await file.text();
+    const resp = await axios.post(`${apiUrl}/submit-records`, {
+        problem_id: Number(pid),
+        contest_id: 0,
+        language: 'cpp',
+        source_code: sourceCode
+    }, {
         headers: {
-            'Content-Type': 'multipart/form-data',
-            Username: encodeURIComponent(userName.value),
-            Authorization: token.value,
-            "Accept-Language": language.value
+            ...authHeaders()
         },
     });
+    return {
+        ...resp,
+        data: {
+            ...resp.data,
+            message: resp.data?.message || 'success'
+        }
+    }
 }

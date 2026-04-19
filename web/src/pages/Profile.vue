@@ -198,8 +198,6 @@ onUnmounted(() => {
       </v-card-text>
       <v-card-actions style="justify-content: end;">
         <v-btn v-if="currentUsername === userName" color="primary" variant="text" rounded="xl"
-          style="margin-right: 10px;" @click="$router.push('/reset')">{{ $t('message.resetpwd') }}</v-btn>
-        <v-btn v-if="currentUsername === userName" color="primary" variant="text" rounded="xl"
           style="margin-right: 10px;" @click="logout">{{
             $t('message.logout') }}</v-btn>
       </v-card-actions>
