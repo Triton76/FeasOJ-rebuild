@@ -15,7 +15,7 @@
 
 - [x] 3.1 [P0][Depends: 1.3][AC: class_code 入参与 pending 审核态在接口文档中锁定] Freeze class join/review API semantics and response model.
 - [x] 3.2 [P0][Depends: 3.1][AC: 申请、审核、重复申请、权限不足场景全部有稳定错误码] Implement deterministic status/error mapping.
-- [ ] 3.3 [P1][Depends: 3.2][AC: 前端页面可展示 pending/active/rejected/revoked 全状态] Wire frontend state rendering for membership lifecycle.
+- [x] 3.3 [P1][Depends: 3.2][AC: 前端页面可展示 pending/active/rejected/revoked 全状态] Wire frontend state rendering for membership lifecycle.
 - [x] 3.4 [P1][Depends: 3.2][AC: 班级加入与审核链路集成测试通过] Add end-to-end tests for join and review feedback loop.
 
 ## 4. Account Security Assist Decision & Landing

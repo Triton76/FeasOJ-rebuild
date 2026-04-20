@@ -33,6 +33,21 @@ const myManagedClassIds = computed(() => (memberships.value || [])
     .filter((item) => item.status === 'active' && (item.role_in_class === 'teacher' || item.role_in_class === 'assistant'))
     .map((item) => item.class_id));
 
+const membershipStatusMeta = (status) => {
+    switch (status) {
+        case 'pending':
+            return { label: 'Pending Review', color: 'warning' };
+        case 'active':
+            return { label: 'Active', color: 'success' };
+        case 'rejected':
+            return { label: 'Rejected', color: 'error' };
+        case 'revoked':
+            return { label: 'Revoked', color: 'default' };
+        default:
+            return { label: status || 'Unknown', color: 'default' };
+    }
+};
+
 const loadMyMemberships = async () => {
     loading.value = true;
     try {
@@ -180,6 +195,15 @@ onMounted(async () => {
                             :loading="loading"
                             item-key="id"
                         >
+                            <template #item.status="{ item }">
+                                <v-chip
+                                    size="small"
+                                    :color="membershipStatusMeta(item.status).color"
+                                    variant="tonal"
+                                >
+                                    {{ membershipStatusMeta(item.status).label }}
+                                </v-chip>
+                            </template>
                             <template #item.actions="{ item }">
                                 <div class="d-flex ga-2 flex-wrap">
                                     <v-btn size="small" variant="tonal" color="primary" @click="router.push(`/classes/${item.class_id}/memberships`)">

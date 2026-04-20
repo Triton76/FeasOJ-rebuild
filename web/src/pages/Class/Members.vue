@@ -19,6 +19,21 @@ const memberships = ref([]);
 
 const canReview = computed(() => role.value === 'admin' || myMembershipRole.value === 'teacher' || myMembershipRole.value === 'assistant');
 
+const membershipStatusMeta = (status) => {
+    switch (status) {
+        case 'pending':
+            return { label: 'Pending Review', color: 'warning' };
+        case 'active':
+            return { label: 'Active', color: 'success' };
+        case 'rejected':
+            return { label: 'Rejected', color: 'error' };
+        case 'revoked':
+            return { label: 'Revoked', color: 'default' };
+        default:
+            return { label: status || 'Unknown', color: 'default' };
+    }
+};
+
 const loadMemberships = async () => {
     if (!classId.value) {
         showAlert('Missing class id', '/classes');
@@ -109,6 +124,15 @@ onMounted(async () => {
                     :loading="loading"
                     item-key="id"
                 >
+                    <template #item.status="{ item }">
+                        <v-chip
+                            size="small"
+                            :color="membershipStatusMeta(item.status).color"
+                            variant="tonal"
+                        >
+                            {{ membershipStatusMeta(item.status).label }}
+                        </v-chip>
+                    </template>
                     <template #item.actions="{ item }">
                         <div class="d-flex ga-2">
                             <v-btn
