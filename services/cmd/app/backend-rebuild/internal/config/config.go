@@ -5,9 +5,13 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,7 +104,7 @@ func Load() (Config, error) {
 		RabbitMQWorkerPrefetch:    1,
 	}
 
-	if err := loadFromYAML(&cfg); err != nil {
+	if err := loadFromFile(&cfg); err != nil {
 		return Config{}, err
 	}
 	loadFromEnv(&cfg)
@@ -111,13 +115,37 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-func loadFromYAML(cfg *Config) error {
+func loadFromFile(cfg *Config) error {
 	path := os.Getenv("BACKEND_REBUILD_CONFIG")
 	if path == "" {
 		path = defaultConfigPath
 	}
 	cfg.ConfigPath = path
 
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == "" || ext == ".yaml" || ext == ".yml" {
+		return loadFromYAML(cfg, path)
+	}
+	if ext == ".toml" {
+		if !compatModeEnabled() {
+			return fmt.Errorf("config format %q is not supported when BACKEND_REBUILD_CONFIG_COMPAT_MODE=false; migrate to YAML", ext)
+		}
+		log.Printf("[backend-rebuild] deprecated config format TOML accepted in compatibility mode, please migrate %s to YAML", path)
+		return loadFromTOML(cfg, path)
+	}
+
+	return fmt.Errorf("unsupported config extension %q, only .yaml/.yml are supported (or .toml in compatibility mode)", ext)
+}
+
+func compatModeEnabled() bool {
+	v := strings.TrimSpace(os.Getenv("BACKEND_REBUILD_CONFIG_COMPAT_MODE"))
+	if v == "" {
+		return true
+	}
+	return v == "1" || strings.EqualFold(v, "true")
+}
+
+func loadFromYAML(cfg *Config, path string) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -132,6 +160,122 @@ func loadFromYAML(cfg *Config) error {
 		return fmt.Errorf("parse config yaml failed: %w", err)
 	}
 	cfg.ConfigSource = "yaml:" + path
+
+	if fc.Server.Addr != "" {
+		cfg.Addr = fc.Server.Addr
+	}
+	if fc.MySQL.DSN != "" {
+		cfg.MySQLDSN = fc.MySQL.DSN
+	}
+	if fc.JWT.Secret != "" {
+		cfg.JWTSecret = fc.JWT.Secret
+	}
+	if fc.Judge.WritebackToken != "" {
+		cfg.JudgeWritebackToken = fc.Judge.WritebackToken
+	}
+	if fc.JWT.Issuer != "" {
+		cfg.JWTIssuer = fc.JWT.Issuer
+	}
+	if fc.JWT.ExpireHours > 0 {
+		cfg.JWTExpireH = strconv.Itoa(fc.JWT.ExpireHours)
+	}
+	if fc.Scheduler.ContestStatusScanSeconds > 0 {
+		cfg.ContestStatusScanSeconds = fc.Scheduler.ContestStatusScanSeconds
+	}
+	if fc.FeatureFlags.EnableJudgeWriteback != nil {
+		cfg.EnableJudgeWriteback = *fc.FeatureFlags.EnableJudgeWriteback
+	}
+	if fc.FeatureFlags.EnableScoreboard != nil {
+		cfg.EnableScoreboard = *fc.FeatureFlags.EnableScoreboard
+	}
+	if fc.FeatureFlags.EnableTestcaseAPIs != nil {
+		cfg.EnableTestcaseAPIs = *fc.FeatureFlags.EnableTestcaseAPIs
+	}
+	if fc.FeatureFlags.EnableRabbitMQQueue != nil {
+		cfg.EnableRabbitMQQueue = *fc.FeatureFlags.EnableRabbitMQQueue
+	}
+	if fc.FeatureFlags.EnableEmbeddedJudgeWorker != nil {
+		cfg.EnableEmbeddedJudgeWorker = *fc.FeatureFlags.EnableEmbeddedJudgeWorker
+	}
+	if fc.FeatureFlags.EnableClassWorkflowV2 != nil {
+		cfg.EnableClassWorkflowV2 = *fc.FeatureFlags.EnableClassWorkflowV2
+	}
+	if fc.FeatureFlags.EnablePasswordReset != nil {
+		cfg.EnablePasswordReset = *fc.FeatureFlags.EnablePasswordReset
+	}
+	if fc.RabbitMQ.URL != "" {
+		cfg.RabbitMQURL = fc.RabbitMQ.URL
+	}
+	if fc.RabbitMQ.Exchange != "" {
+		cfg.RabbitMQExchange = fc.RabbitMQ.Exchange
+	}
+	if fc.RabbitMQ.MainQueue != "" {
+		cfg.RabbitMQMainQueue = fc.RabbitMQ.MainQueue
+	}
+	if fc.RabbitMQ.RetryQueue != "" {
+		cfg.RabbitMQRetryQueue = fc.RabbitMQ.RetryQueue
+	}
+	if fc.RabbitMQ.DLQ != "" {
+		cfg.RabbitMQDLQ = fc.RabbitMQ.DLQ
+	}
+	if fc.RabbitMQ.Prefetch > 0 {
+		cfg.RabbitMQWorkerPrefetch = fc.RabbitMQ.Prefetch
+	}
+
+	return nil
+}
+
+func loadFromTOML(cfg *Config, path string) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			cfg.ConfigSource = "defaults"
+			return nil
+		}
+		return fmt.Errorf("read config toml failed: %w", err)
+	}
+
+	var fc struct {
+		Server struct {
+			Addr string `toml:"addr"`
+		} `toml:"server"`
+		MySQL struct {
+			DSN string `toml:"dsn"`
+		} `toml:"mysql"`
+		JWT struct {
+			Secret      string `toml:"secret"`
+			Issuer      string `toml:"issuer"`
+			ExpireHours int    `toml:"expire_hours"`
+		} `toml:"jwt"`
+		Judge struct {
+			WritebackToken string `toml:"writeback_token"`
+		} `toml:"judge"`
+		Scheduler struct {
+			ContestStatusScanSeconds int `toml:"contest_status_scan_seconds"`
+		} `toml:"scheduler"`
+		FeatureFlags struct {
+			EnableJudgeWriteback      *bool `toml:"enable_judge_writeback"`
+			EnableScoreboard          *bool `toml:"enable_scoreboard"`
+			EnableTestcaseAPIs        *bool `toml:"enable_testcase_apis"`
+			EnableRabbitMQQueue       *bool `toml:"enable_rabbitmq_queue"`
+			EnableEmbeddedJudgeWorker *bool `toml:"enable_embedded_judge_worker"`
+			EnableClassWorkflowV2     *bool `toml:"enable_class_workflow_v2"`
+			EnablePasswordReset       *bool `toml:"enable_password_reset"`
+		} `toml:"feature_flags"`
+		RabbitMQ struct {
+			URL        string `toml:"url"`
+			Exchange   string `toml:"exchange"`
+			MainQueue  string `toml:"main_queue"`
+			RetryQueue string `toml:"retry_queue"`
+			DLQ        string `toml:"dlq"`
+			Prefetch   int    `toml:"worker_prefetch"`
+		} `toml:"rabbitmq"`
+	}
+
+	if _, err := toml.Decode(string(content), &fc); err != nil {
+		return fmt.Errorf("parse config toml failed: %w", err)
+	}
+	cfg.ConfigSource = "toml-compat:" + path
 
 	if fc.Server.Addr != "" {
 		cfg.Addr = fc.Server.Addr
