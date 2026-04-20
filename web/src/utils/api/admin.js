@@ -7,24 +7,123 @@ const authHeaders = () => ({
     "Accept-Language": language.value
 });
 
+const reqConfig = () => ({
+    headers: {
+        ...authHeaders()
+    }
+});
+
+const toLegacyProblem = (problem) => ({
+    id: problem.id,
+    title: problem.title ?? "",
+    content: problem.content ?? "",
+    difficulty: problem.difficulty ?? 0,
+    time_limit: problem.time_limit_ms ?? 1000,
+    memory_limit: problem.memory_limit_mb ?? 128,
+    input: problem.input ?? "",
+    output: problem.output ?? "",
+    competition_id: Number(problem.class_id || 0),
+    is_visible: (problem.visibility ?? 'public') !== 'private',
+    test_cases: [{ input_data: '', output_data: '' }]
+});
+
+const toProblemPayload = (problemInfo) => ({
+    title: problemInfo.title,
+    content: problemInfo.content,
+    input: problemInfo.input,
+    output: problemInfo.output,
+    difficulty: Number(problemInfo.difficulty ?? 0),
+    time_limit_ms: Number(problemInfo.time_limit ?? 1000),
+    memory_limit_mb: Number(problemInfo.memory_limit ?? 128),
+    class_id: problemInfo.competition_id && Number(problemInfo.competition_id) > 0 ? String(problemInfo.competition_id) : "",
+    visibility: problemInfo.is_visible ? 'public' : 'private',
+    status: 'published'
+});
+
+const contestStatusTextToCode = (status) => {
+    switch (status) {
+        case 'running':
+            return 1;
+        case 'ended':
+            return 2;
+        default:
+            return 0;
+    }
+};
+
+const contestStatusCodeToText = (status) => {
+    switch (Number(status)) {
+        case 1:
+            return 'running';
+        case 2:
+            return 'ended';
+        default:
+            return 'scheduled';
+    }
+};
+
+const toLegacyContest = (contest) => ({
+    id: contest.id,
+    title: contest.title ?? "",
+    subtitle: contest.subtitle ?? "",
+    difficulty: contest.rule_type === 'oi' ? 2 : contest.rule_type === 'acm' ? 1 : 0,
+    password: "",
+    encrypted: Boolean(contest.is_encrypted),
+    is_visible: (contest.visibility ?? 'public') !== 'private',
+    start_at: contest.start_at ?? "",
+    end_at: contest.end_at ?? "",
+    announcement: contest.announcement ?? "",
+    status: contestStatusTextToCode(contest.status)
+});
+
+const toContestPayload = (comInfo) => ({
+    title: comInfo.title,
+    subtitle: comInfo.subtitle,
+    description: comInfo.subtitle ?? "",
+    announcement: comInfo.announcement,
+    class_id: "",
+    visibility: comInfo.is_visible ? 'public' : 'private',
+    rule_type: Number(comInfo.difficulty) === 2 ? 'oi' : Number(comInfo.difficulty) === 1 ? 'acm' : 'assignment',
+    status: contestStatusCodeToText(comInfo.status),
+    is_encrypted: Boolean(comInfo.encrypted),
+    password: comInfo.encrypted ? (comInfo.password ?? "") : "",
+    start_at: comInfo.start_at,
+    end_at: comInfo.end_at
+});
+
 // 管理员获取竞赛列表
 export const getAllCompetitionsInfo = async () => {
+    const resp = await axios.get(`${apiUrl}/contests`, reqConfig())
     return {
-        data: { data: [] }
+        ...resp,
+        data: {
+            ...resp.data,
+            data: (resp.data?.data ?? []).map(toLegacyContest)
+        }
     }
 }
 
 // 管理员获取指定列表信息
 export const getCompetitionInfoByIDAdmin = async (cid) => {
+    const resp = await axios.get(`${apiUrl}/contests/${cid}`, reqConfig())
     return {
-        data: { data: null }
+        ...resp,
+        data: {
+            ...resp.data,
+            data: toLegacyContest(resp.data?.data ?? {})
+        }
     }
 }
 
 // 管理员获取指定题目所有信息
 export const getProblemAllInfoByAdmin = async (pid) => {
+    const resp = await axios.get(`${apiUrl}/problems/${pid}`, reqConfig())
     return {
-        data: { data: null }
+        ...resp,
+        data: {
+            ...resp.data,
+            data: toLegacyProblem(resp.data?.data ?? {})
+        }
     }
 }
 
@@ -39,16 +138,22 @@ export const getAllUsersInfo = async () => {
 
 // 管理员添加/更新题目信息
 export const updateProblemInfo = async (problemInfo) => {
-    return {
-        data: { message: 'admin problem write is not available in rebuild backend' }
+    const payload = toProblemPayload(problemInfo)
+    try {
+        if (problemInfo.id) {
+            return await axios.patch(`${apiUrl}/problems/${problemInfo.id}`, payload, reqConfig())
+        }
+    } catch (error) {
+        if (error?.response?.status !== 404) {
+            throw error
+        }
     }
+    return await axios.post(`${apiUrl}/problems`, payload, reqConfig())
 }
 
 // 管理员删除题目信息
 export const deleteProblemAllInfo = async (pid) => {
-    return {
-        data: { message: 'admin problem delete is not available in rebuild backend' }
-    }
+    return await axios.delete(`${apiUrl}/problems/${pid}`, reqConfig())
 }
 
 // 封禁用户
@@ -91,36 +196,57 @@ export const demoteUser = async (uid) => {
 
 // 管理员获取题目列表
 export const getAllProblemsAdmin = async () => {
+    const resp = await axios.get(`${apiUrl}/problems`, reqConfig())
     return {
-        data: { data: [] }
+        ...resp,
+        data: {
+            ...resp.data,
+            data: (resp.data?.data ?? []).map(toLegacyProblem)
+        }
     }
 }
 
 // 管理员删除竞赛
 export const deleteCompetition = async (cid) => {
-    return {
-        data: { message: 'admin contest delete is not available in rebuild backend' }
-    }
+    return await axios.delete(`${apiUrl}/contests/${cid}`, reqConfig())
 }
 
 // 管理员添加/更新竞赛信息
 export const updateComInfo = async (comInfo) => {
-    return {
-        data: { message: 'admin contest write is not available in rebuild backend' }
+    const payload = toContestPayload(comInfo)
+    try {
+        if (comInfo.id) {
+            return await axios.patch(`${apiUrl}/contests/${comInfo.id}`, payload, reqConfig())
+        }
+    } catch (error) {
+        if (error?.response?.status !== 404) {
+            throw error
+        }
     }
+    return await axios.post(`${apiUrl}/contests`, payload, reqConfig())
 }
 
 // 管理员启用竞赛计分
 export const caculateComScore = async (cid) => {
-    return {
-        data: { message: 'admin score calculation is not available in rebuild backend' }
-    }
+    return await getScores(cid, 1, 10)
 }
 
 // 管理员查看竞赛得分情况
 export const getScores = async (cid, page, itemsPerPage) => {
+    const resp = await axios.get(`${apiUrl}/contests/${cid}/scoreboard`, reqConfig())
+    const rows = resp.data?.data?.items ?? []
+    const start = Math.max((Number(page) - 1) * Number(itemsPerPage), 0)
+    const end = start + Number(itemsPerPage)
+    const users = rows.slice(start, end).map((item) => ({
+        username: item.username,
+        score: item.solved
+    }))
     return {
-        data: { data: [] }
+        ...resp,
+        data: {
+            users,
+            total: rows.length
+        }
     }
 }
 

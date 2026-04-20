@@ -8,6 +8,8 @@ const router = useRouter();
 const loading = ref(true);
 const userPrivilege = ref("")
 
+const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
+
 // 计算属性来判断用户是否已经登录
 const userLoggedIn = computed(() => !!token.value)
 
@@ -20,7 +22,7 @@ onMounted(async () => {
         }
         const userInfoResponse = await verifyUserInfo(userName.value, token.value);
         userPrivilege.value = userInfoResponse.data.data.role;
-        if (userPrivilege.value !== 1) {
+        if (!isAdminRole(userPrivilege.value)) {
             window.location = '#/403';
             return;
         }

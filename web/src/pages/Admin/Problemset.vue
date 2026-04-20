@@ -70,6 +70,8 @@ const headers = ref([
 
 const isCreate = ref(false)
 
+const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
+
 // 过滤后的数据
 const filteredProblems = computed(() => {
     if (!searchQuery.value) {
@@ -236,7 +238,7 @@ onMounted(async () => {
             return;
         }
         userPrivilege.value = userInfoResponse.data.data.role;
-        if (userPrivilege.value !== 1) {
+        if (!isAdminRole(userPrivilege.value)) {
             window.location = '#/403';
             return;
         }

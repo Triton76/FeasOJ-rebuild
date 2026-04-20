@@ -71,6 +71,8 @@ const difficultyOptions = [
     { value: 2, label: t('message.hard') }
 ];
 
+const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
+
 const scoreHeaders = ref([
     { title: t('message.username'), value: 'username', align: 'center' },
     { title: 'Score', value: 'score', align: 'center' },
@@ -264,7 +266,7 @@ onMounted(async () => {
         }
         const userInfoResponse = await verifyUserInfo(userName.value, token.value);
         userPrivilege.value = userInfoResponse.data.data.role;
-        if (userPrivilege.value !== 1) {
+        if (!isAdminRole(userPrivilege.value)) {
             window.location = '#/403';
             return;
         }

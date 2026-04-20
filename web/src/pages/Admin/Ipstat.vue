@@ -20,6 +20,8 @@ const searchQuery = ref('');
 const currentPage = ref(1);
 const itemsPerPage = ref(50);
 
+const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
+
 // 表格头部定义
 const headers = ref([
     { title: t('message.ipAddress'), value: 'ip', align: 'center', sortable: false },
@@ -93,7 +95,7 @@ onMounted(async () => {
         }
         const userInfoResponse = await verifyUserInfo(userName.value, token.value);
         userPrivilege.value = userInfoResponse.data.data.role;
-        if (userPrivilege.value !== 1) {
+        if (!isAdminRole(userPrivilege.value)) {
             window.location = '#/403';
             return;
         }

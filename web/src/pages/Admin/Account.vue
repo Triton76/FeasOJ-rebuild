@@ -20,6 +20,8 @@ const networkloading = ref(false);
 const currentPage = ref(1);
 const itemsPerPage = ref(50);
 
+const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
+
 const getMenus = (item) => {
     let filteredMenus = []
     if (!item.is_banned) {
@@ -27,7 +29,7 @@ const getMenus = (item) => {
     } else {
         filteredMenus.push({ title: t("message.unbanUser"), icon: 'mdi-account-check' })
     }
-    if (item.role === 1) {
+    if (isAdminRole(item.role)) {
         filteredMenus.push({ title: t("message.demoteUser"), icon: 'mdi-account-minus' })
     } else {
         filteredMenus.push({ title: t("message.promoteUser"), icon: 'mdi-account-plus' })
@@ -122,7 +124,7 @@ onMounted(async () => {
         }
         const userInfoResponse = await verifyUserInfo(userName.value, token.value);
         userPrivilege.value = userInfoResponse.data.data.role;
-        if (userPrivilege.value !== 1) {
+        if (!isAdminRole(userPrivilege.value)) {
             window.location = '#/403';
             return;
         }
