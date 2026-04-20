@@ -19,18 +19,18 @@
 ## 3. Contest ACM/OI Mode Parity
 
 - [x] 3.1 Refactor scoreboard service to branch deterministic logic by `rule_type`
-- [ ] 3.2 Implement ACM ranking semantics (solved, penalty, tie-break) and freeze metadata behavior
+- [x] 3.2 Implement ACM ranking semantics (solved, penalty, tie-break) and freeze metadata behavior
 - [x] 3.3 Implement OI ranking semantics (per-problem best score aggregation and tie-break)
-- [ ] 3.4 Ensure contest visibility/join policy remains consistent across modes and encryption settings
+- [x] 3.4 Ensure contest visibility/join policy remains consistent across modes and encryption settings
 - [x] 3.5 Add golden-case scoreboard fixtures and tests for ACM freeze edge cases and OI scoring
 
 ## 4. Frontend-Backend Contract Alignment
 
-- [ ] 4.1 Remove legacy field shims from `web/src/utils/api/*` for submit, contest, class, and admin flows
-- [ ] 4.2 Update status/profile/admin pages to consume canonical rebuild DTO fields
+- [x] 4.1 Remove legacy field shims from `web/src/utils/api/*` for submit, contest, class, and admin flows
+- [x] 4.2 Update status/profile/admin pages to consume canonical rebuild DTO fields
 - [x] 4.3 Fix admin contest scoreboard parsing and pagination against canonical backend payload
-- [ ] 4.4 Replace fabricated local-only contest/class fallbacks with backend API-driven data
-- [ ] 4.5 Normalize frontend error handling for 400/401/403/404/409/429 semantics
+- [x] 4.4 Replace fabricated local-only contest/class fallbacks with backend API-driven data
+- [x] 4.5 Normalize frontend error handling for 400/401/403/404/409/429 semantics
 - [x] 4.6 Add frontend smoke tests/manual checklist for submit, contest, class, and admin critical paths
 
 ## 5. Class Management Frontend Workflows

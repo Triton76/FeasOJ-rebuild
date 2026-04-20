@@ -4,13 +4,14 @@ import { useI18n } from "vue-i18n";
 import { token } from '../../utils/account';
 import { showAlert } from '../../utils/alert';
 import { useRoute, useRouter } from 'vue-router';
-import { getCompetitionById, getCompetitionUsers, getCompetitionProblems, isInCompetition, quitCompetition } from '../../utils/api/competitions';
+import { getCompetitionById, quitCompetition } from '../../utils/api/competitions';
 import { avatarServer } from '../../utils/axios';
 import { MdPreview } from 'md-editor-v3';
 import { getMdPreviewTheme } from '../../utils/theme';
 import 'md-editor-v3/lib/preview.css';
 import moment from "moment";
 import { difficultyColor, difficultyLang } from '../../utils/dynamic_styles';
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 
 const { t } = useI18n();
 
@@ -35,11 +36,11 @@ const problems = ref([]);
 // 显示题目状态
 const compStatus = (status) => {
     switch (status) {
-        case 0:
+        case 'scheduled':
             return 'message.compenotstarted';
-        case 1:
+        case 'running':
             return 'message.compeprogress';
-        case 2:
+        case 'ended':
             return 'message.compeover';
         default:
             return 'message.compenotstarted';
@@ -59,10 +60,12 @@ const handleThemeChange = (event) => {
 const quitComp = async () => {
     networkloading.value = true;
     try {
-        const response = await quitCompetition(competitionId);
-        showAlert(response.data.message, "/competitions");
+        await quitCompetition(competitionId);
+        showAlert('Quit competition succeeded', "/competitions");
     } catch (error) {
-        showAlert(error.response.data.message, "");
+        showAlert(resolveApiErrorMessage(error, {
+            501: 'Quit competition is not supported by rebuild backend yet'
+        }, 'Quit competition failed'), "");
     } finally {
         networkloading.value = false;
     }
@@ -76,29 +79,19 @@ const isContestEnded = computed(() => {
 onMounted(async () => {
     loading.value = true;
     if (userLoggedIn.value) {
-        const response = await isInCompetition(competitionId);
-        if (response.data.isIn) {
-            try {
-                // 获取该竞赛详细信息
-                const resp = await getCompetitionById(competitionId);
-                contestInfo.value = resp.data.data;
-
-                // 获取该竞赛参赛人员列表
-                const resp2 = await getCompetitionUsers(competitionId);
-                usersInfo.value = resp2.data.data;
-
-                // 获取该竞赛题目列表
-                if (contestInfo.value.status != 0) {
-                    const resp3 = await getCompetitionProblems(competitionId);
-                    problems.value = resp3.data.data;
-                }
-            } catch (error) {
-                showAlert(t("message.failed") + "!", "");
-            } finally {
-                loading.value = false;
-            }
-        } else {
-            window.location = '#/competitions'
+        try {
+            const resp = await getCompetitionById(competitionId);
+            contestInfo.value = resp?.data?.data || {};
+            usersInfo.value = [];
+            problems.value = [];
+        } catch (error) {
+            showAlert(resolveApiErrorMessage(error, {
+                401: 'Please login first',
+                403: 'You do not have access to this contest',
+                404: 'Contest not found'
+            }, 'Load contest failed'), '/competitions');
+        } finally {
+            loading.value = false;
         }
     } else {
         window.location = '#/login'
@@ -194,7 +187,7 @@ onUnmounted(() => {
                                     </v-list-item-title>
                                     <template v-slot:append>
                                         <div style="margin-left: 10px;"></div>
-                                        <v-chip :style="difficultyColor(p.difficulty)">
+                                            <v-chip :style="difficultyColor(p.difficulty)">
                                             {{ t(difficultyLang(p.difficulty)) }}
                                         </v-chip>
                                     </template>

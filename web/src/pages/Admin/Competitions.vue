@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { getAllCompetitionsInfo, getCompetitionInfoByIDAdmin, deleteCompetition, updateComInfo, caculateComScore, getScores } from '../../utils/api/admin';
 import { verifyUserInfo } from '../../utils/api/auth';
 import { showAlert } from '../../utils/alert';
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 import { MdEditor } from "md-editor-v3";
 import { getMdEditorTheme } from '../../utils/theme';
 import moment from 'moment';
@@ -76,8 +77,11 @@ const ruleTypeOptions = [
 const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
 
 const scoreHeaders = ref([
+    { title: 'Rank', value: 'rank', align: 'center' },
     { title: t('message.username'), value: 'username', align: 'center' },
-    { title: 'Score', value: 'score', align: 'center' },
+    { title: 'Solved', value: 'solved', align: 'center' },
+    { title: 'Total Score', value: 'total_score', align: 'center' },
+    { title: 'Penalty', value: 'penalty_minutes', align: 'center' },
 ])
 
 // 分页后的数据
@@ -266,10 +270,19 @@ const getScoreBoard = async (competitionId) => {
     cid.value = competitionId;
     try {
         const response = await getScores(competitionId, page.value, itemsPerPage.value);
-        scores.value = response.data.users;
-        totalScores.value = response.data.total;
+        const rows = response?.data?.data?.visible_items || [];
+        const start = Math.max((Number(page.value) - 1) * Number(itemsPerPage.value), 0);
+        const end = start + Number(itemsPerPage.value);
+        scores.value = rows.slice(start, end).map((item) => ({
+            rank: item.rank,
+            username: item.username,
+            solved: item.solved,
+            total_score: item.total_score,
+            penalty_minutes: item.penalty_minutes
+        }));
+        totalScores.value = rows.length;
     } catch (error) {
-        showAlert(t("message.failed") + "!", "");
+        showAlert(resolveApiErrorMessage(error, {}, t("message.failed") + "!"), "");
     } finally {
         scoreloading.value = false;
     }

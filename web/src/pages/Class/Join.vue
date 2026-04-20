@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { applyJoinClass } from '../../utils/api/classes';
 import { showAlert } from '../../utils/alert';
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 
 const router = useRouter();
 const classCode = ref('');
@@ -19,24 +20,13 @@ const joinClass = async () => {
         await applyJoinClass(classCode.value.trim());
         showAlert('Join request submitted', '/classes');
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 401) {
-            showAlert('Please login first', '/login');
-            return;
-        }
-        if (status === 403) {
-            showAlert('You do not have permission to join this class', '');
-            return;
-        }
-        if (status === 404) {
-            showAlert('Class code not found', '');
-            return;
-        }
-        if (status === 409) {
-            showAlert('You already have a membership record for this class', '');
-            return;
-        }
-        showAlert('Join class failed, please retry', '');
+        const status = Number(error?.response?.status || 0);
+        showAlert(resolveApiErrorMessage(error, {
+            401: 'Please login first',
+            403: 'You do not have permission to join this class',
+            404: 'Class code not found',
+            409: 'You already have a membership record for this class'
+        }, 'Join class failed, please retry'), status === 401 ? '/login' : '');
     } finally {
         loading.value = false;
     }

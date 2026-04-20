@@ -10,6 +10,7 @@ import { useI18n } from 'vue-i18n';
 import { MdPreview } from "md-editor-v3";
 import { showNotification } from '../utils/notification.js';
 import { getMdPreviewTheme } from '../utils/theme.js';
+import { resolveApiErrorMessage } from '../utils/api/errors.js';
 import 'md-editor-v3/lib/preview.css';
 import moment from 'moment';
 
@@ -19,10 +20,10 @@ const router = useRouter();
 
 const headers = ref([
   { title: t('message.problemId'), value: 'problem_id', align: 'center', sortable: false },
-  { title: t('message.username'), value: 'username', align: 'center', sortable: false },
+  { title: t('message.username'), value: 'user_id', align: 'center', sortable: false },
   { title: t('message.result'), value: 'result', align: 'center', sortable: false },
   { title: t('message.lang'), value: 'language', align: 'center', sortable: false },
-  { title: t('message.when'), value: 'time', align: 'center', sortable: false },
+  { title: t('message.when'), value: 'submitted_at', align: 'center', sortable: false },
 ])
 const submitrecords = ref([])
 const submitRecordsLength = ref(0)
@@ -51,7 +52,7 @@ const fetchData = async () => {
     submitrecords.value = response.data.data
     submitRecordsLength.value = submitrecords.value.length
   } catch (error) {
-    showAlert(t("message.failed") + "!", "")
+    showAlert(resolveApiErrorMessage(error, {}, t("message.failed") + "!"), "")
   } finally {
     loading.value = false
   }
@@ -126,15 +127,15 @@ onUnmounted(() => {
                     </v-btn>
                   </td>
                   <td class="text-center pa-4">
-                    <v-btn @click="router.push({ path: `/profile/${item.username}` })" variant="text" color="primary"
+                    <v-btn @click="router.push({ path: `/profile/${item.user_id}` })" variant="text" color="primary"
                       class="font-weight-medium" size="small" :ripple="false">
-                      {{ item.username }}
+                      {{ item.user_id }}
                     </v-btn>
                   </td>
-                  <td v-if="item.result === 'Running...'" class="text-center pa-4">
+                  <td v-if="item.result === 'pending' || item.result === 'judging'" class="text-center pa-4">
                     <v-progress-circular indeterminate color="primary" size="24" width="2"></v-progress-circular>
                   </td>
-                  <td v-else :style="getResultStyle(item.result)" @click="showCode(item.code, item.language)"
+                  <td v-else :style="getResultStyle(item.result)" @click="showCode('', item.language)"
                     class="text-center pa-4 result-cell">
                     <v-chip :color="getResultChipColor(item.result)" variant="tonal" size="small"
                       class="font-weight-medium">
@@ -148,7 +149,7 @@ onUnmounted(() => {
                   </td>
                   <td class="text-center pa-4">
                     <span class="text-body-2 text-medium-emphasis">
-                      {{ moment(item.time).format('YYYY-MM-DD HH:mm') }}
+                      {{ moment(item.submitted_at).format('YYYY-MM-DD HH:mm') }}
                     </span>
                   </td>
                 </tr>

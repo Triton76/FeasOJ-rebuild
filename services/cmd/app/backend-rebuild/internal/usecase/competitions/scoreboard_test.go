@@ -2,6 +2,7 @@ package competitions
 
 import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
+	passwordutil "FeasOJ/pkg/auth"
 	"context"
 	"testing"
 	"time"
@@ -128,6 +129,9 @@ func TestScoreboardFreezeHidesLastSixtyMinutesBoundary(t *testing.T) {
 	if !resp.FreezeActive {
 		t.Fatal("expected freeze_active=true within final 60 minutes")
 	}
+	if resp.FreezeStartAt != start.Add(60*time.Minute).UTC().Format(time.RFC3339) {
+		t.Fatalf("unexpected freeze_start_at: %s", resp.FreezeStartAt)
+	}
 	if len(resp.VisibleItems) != 1 {
 		t.Fatalf("expected only pre-freeze solved data visible, got %d rows", len(resp.VisibleItems))
 	}
@@ -189,5 +193,71 @@ func TestScoreboardOITieBreakUsesEarlierReachedAtThenUserID(t *testing.T) {
 	}
 	if resp.VisibleItems[0].UserID != "u1" {
 		t.Fatalf("expected u1 first by earlier reached_at, got %s", resp.VisibleItems[0].UserID)
+	}
+}
+
+func TestJoinContestWrongPasswordForbiddenAcrossRules(t *testing.T) {
+	hash := passwordutil.EncryptPassword("correct-password")
+	rules := []string{"acm", "oi", "assignment"}
+
+	for _, rule := range rules {
+		repo := &fakeScoreboardRepo{
+			contest: Contest{ID: 100, RuleType: rule, IsEncrypted: true, PasswordHash: hash},
+		}
+		svc := NewService(repo)
+
+		_, err := svc.JoinContest(context.Background(), ports.JoinContestRequest{
+			ContestID: 100,
+			UserID:    "u-1",
+			Password:  "wrong-password",
+			ActorRole: "student",
+		})
+		if err != ports.ErrForbidden {
+			t.Fatalf("rule=%s expected ErrForbidden, got %v", rule, err)
+		}
+	}
+}
+
+type fakeVisibilityRepo struct {
+	contest Contest
+}
+
+func (r *fakeVisibilityRepo) ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]Contest, error) {
+	return []Contest{r.contest}, nil
+}
+
+func (r *fakeVisibilityRepo) GetVisibleByID(ctx context.Context, contestID int64, actorUserID, actorRole string) (Contest, error) {
+	if r.contest.ID != contestID || r.contest.Visibility == "private" {
+		return Contest{}, ports.ErrNotFound
+	}
+	return r.contest, nil
+}
+
+func (r *fakeVisibilityRepo) GetByID(ctx context.Context, contestID int64) (Contest, error) {
+	if r.contest.ID != contestID {
+		return Contest{}, ports.ErrNotFound
+	}
+	return r.contest, nil
+}
+
+func (r *fakeVisibilityRepo) Create(ctx context.Context, c Contest) (Contest, error) { return c, nil }
+func (r *fakeVisibilityRepo) Update(ctx context.Context, c Contest) (Contest, error) { return c, nil }
+func (r *fakeVisibilityRepo) Delete(ctx context.Context, contestID int64) error      { return nil }
+func (r *fakeVisibilityRepo) CreateParticipant(ctx context.Context, p Participant) (Participant, error) {
+	return p, nil
+}
+func (r *fakeVisibilityRepo) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error) {
+	return nil, nil
+}
+
+func TestJoinContestPrivateVisibilityNotFoundAcrossRules(t *testing.T) {
+	rules := []string{"acm", "oi", "assignment"}
+	for _, rule := range rules {
+		repo := &fakeVisibilityRepo{contest: Contest{ID: 88, RuleType: rule, Visibility: "private"}}
+		svc := NewService(repo)
+		_, err := svc.JoinContest(context.Background(), ports.JoinContestRequest{ContestID: 88, UserID: "u-2", ActorRole: "student"})
+		if err != ports.ErrNotFound {
+			t.Fatalf("rule=%s expected ErrNotFound, got %v", rule, err)
+		}
 	}
 }

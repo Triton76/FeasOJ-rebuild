@@ -1,12 +1,12 @@
 <script setup>
 import { token } from "../../utils/account";
 import { ref, onMounted, computed } from "vue";
-import { getAllCompetitions, isInCompetition, joinCompWithPwd, joinCompetition } from "../../utils/api/competitions";
+import { getAllCompetitions, joinCompWithPwd, joinCompetition } from "../../utils/api/competitions";
 import { useI18n } from "vue-i18n";
 import moment from "moment";
 import { showAlert } from "../../utils/alert";
 import { useRouter } from 'vue-router';
-import { difficultyColor, difficultyLang } from "../../utils/dynamic_styles";
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 
 const router = useRouter();
 const { t } = useI18n();
@@ -32,10 +32,18 @@ const joinCompetitionWithPwd = async (competitionId) => {
                 networkloading.value = true;
                 const resp = await joinCompWithPwd(competitionId, password.value);
                 networkloading.value = false;
-                showAlert(resp.data.message, 'reload')
+                showAlert(resp?.data?.message || 'Join succeeded', `/competitions/${competitionId}`)
             } catch (error) {
                 networkloading.value = false;
-                showAlert(error.response.data.message, '')
+                const status = Number(error?.response?.status || 0);
+                if (status === 409) {
+                    showAlert('You already joined this contest', `/competitions/${competitionId}`);
+                    return;
+                }
+                showAlert(resolveApiErrorMessage(error, {
+                    403: 'Incorrect contest password',
+                    404: 'Contest not found'
+                }, 'Join contest failed'), '');
             }
         }
     }
@@ -48,10 +56,18 @@ const joinComp = async (competitionId) => {
             networkloading.value = true;
             const resp = await joinCompetition(competitionId);
             networkloading.value = false;
-            showAlert(resp.data.message, 'reload')
+            showAlert(resp?.data?.message || 'Join succeeded', `/competitions/${competitionId}`)
         } catch (error) {
             networkloading.value = false;
-            showAlert(error.response.data.message, '')
+            const status = Number(error?.response?.status || 0);
+            if (status === 409) {
+                showAlert('You already joined this contest', `/competitions/${competitionId}`);
+                return;
+            }
+            showAlert(resolveApiErrorMessage(error, {
+                403: 'Contest requires password',
+                404: 'Contest not found'
+            }, 'Join contest failed'), '');
         }
     }
 }
@@ -59,21 +75,11 @@ const joinComp = async (competitionId) => {
 // 选择竞赛并弹出对话框 
 const selectCompetition = async (contest) => {
     selectedId.value = contest.id;
-
-    // 检查用户是否在该竞赛中
-    try {
-        networkloading.value = true;
-        const resp = await isInCompetition(selectedId.value);
-        networkloading.value = false;
-        if (resp.data.isIn) {
-            await router.push({path: `/competitions/${selectedId.value}`})
-        } else {
-            contest.encrypted ? withPwdDialog.value = true : noPwdDialog.value = true;
-        }
-    } catch (error) {
-        showAlert(error.response.data.message, '')
+    if (contest.is_encrypted) {
+        withPwdDialog.value = true;
+        return;
     }
-
+    noPwdDialog.value = true;
 }
 
 // 关闭对话框
@@ -161,8 +167,8 @@ onMounted(async () => {
                             <v-card-title class="competition-title">{{ contest.title }}</v-card-title>
                             <v-card-subtitle style="justify-self: left;">{{ contest.subtitle }}</v-card-subtitle>
                             <template v-slot:append>
-                                <v-chip :style="difficultyColor(contest.difficulty)">
-                                    {{ t(difficultyLang(contest.difficulty)) }}
+                                <v-chip color="primary" variant="tonal">
+                                    {{ (contest.rule_type || '').toUpperCase() || '-' }}
                                 </v-chip>
                             </template>
                             <v-card-text style="display: grid;">

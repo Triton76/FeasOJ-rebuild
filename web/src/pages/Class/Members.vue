@@ -5,6 +5,7 @@ import { verifyUserInfo } from '../../utils/api/auth';
 import { token, userName } from '../../utils/account';
 import { listClassMemberships, listMyMemberships, reviewMembership } from '../../utils/api/classes';
 import { showAlert } from '../../utils/alert';
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 
 const route = useRoute();
 const router = useRouter();
@@ -35,20 +36,11 @@ const loadMemberships = async () => {
         myMembershipRole.value = mine?.role_in_class || '';
         memberships.value = listResp?.data?.data || [];
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 401) {
-            showAlert('Please login first', '/login');
-            return;
-        }
-        if (status === 403) {
-            showAlert('You cannot view this class membership list', '/classes');
-            return;
-        }
-        if (status === 404) {
-            showAlert('Class not found', '/classes');
-            return;
-        }
-        showAlert('Failed to load memberships', '/classes');
+        showAlert(resolveApiErrorMessage(error, {
+            401: 'Please login first',
+            403: 'You cannot view this class membership list',
+            404: 'Class not found'
+        }, 'Failed to load memberships'), '/classes');
     } finally {
         loading.value = false;
     }
@@ -64,20 +56,11 @@ const doReview = async (membershipId, approve) => {
         await reviewMembership(membershipId, approve);
         await loadMemberships();
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 403) {
-            showAlert('You do not have permission to review this request', '');
-            return;
-        }
-        if (status === 404) {
-            showAlert('Membership record not found', '');
-            return;
-        }
-        if (status === 409) {
-            showAlert('Membership already reviewed', '');
-            return;
-        }
-        showAlert('Review action failed', '');
+        showAlert(resolveApiErrorMessage(error, {
+            403: 'You do not have permission to review this request',
+            404: 'Membership record not found',
+            409: 'Membership already reviewed'
+        }, 'Review action failed'), '');
     } finally {
         acting.value = false;
     }

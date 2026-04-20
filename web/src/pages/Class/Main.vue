@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { verifyUserInfo } from '../../utils/api/auth';
 import { token, userName } from '../../utils/account';
 import { showAlert } from '../../utils/alert';
+import { resolveApiErrorMessage } from '../../utils/api/errors';
 import {
     listMyMemberships,
     createClass,
@@ -38,12 +39,9 @@ const loadMyMemberships = async () => {
         const resp = await listMyMemberships();
         memberships.value = resp?.data?.data || [];
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 401) {
-            showAlert('Please login first', '/login');
-            return;
-        }
-        showAlert('Failed to load your class memberships', '');
+        showAlert(resolveApiErrorMessage(error, {
+            401: 'Please login first'
+        }, 'Failed to load your class memberships'), error?.response?.status === 401 ? '/login' : '');
     } finally {
         loading.value = false;
     }
@@ -66,16 +64,10 @@ const submitCreate = async () => {
         createForm.value = { name: '', code: '', description: '' };
         await loadMyMemberships();
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 403) {
-            showAlert('Only teacher/admin can create classes', '');
-            return;
-        }
-        if (status === 409) {
-            showAlert('Class code already exists', '');
-            return;
-        }
-        showAlert('Create class failed', '');
+        showAlert(resolveApiErrorMessage(error, {
+            403: 'Only teacher/admin can create classes',
+            409: 'Class code already exists'
+        }, 'Create class failed'), '');
     } finally {
         saving.value = false;
     }
@@ -105,16 +97,10 @@ const submitEdit = async () => {
         editDialog.value = false;
         await loadMyMemberships();
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 403) {
-            showAlert('You do not have permission to edit this class', '');
-            return;
-        }
-        if (status === 404) {
-            showAlert('Class not found', '');
-            return;
-        }
-        showAlert('Update class failed', '');
+        showAlert(resolveApiErrorMessage(error, {
+            403: 'You do not have permission to edit this class',
+            404: 'Class not found'
+        }, 'Update class failed'), '');
     } finally {
         saving.value = false;
     }
@@ -133,16 +119,10 @@ const submitArchive = async () => {
         archiveClassId.value = '';
         await loadMyMemberships();
     } catch (error) {
-        const status = error?.response?.status;
-        if (status === 403) {
-            showAlert('Only class owner can archive this class', '');
-            return;
-        }
-        if (status === 404) {
-            showAlert('Class not found', '');
-            return;
-        }
-        showAlert('Archive class failed', '');
+        showAlert(resolveApiErrorMessage(error, {
+            403: 'Only class owner can archive this class',
+            404: 'Class not found'
+        }, 'Archive class failed'), '');
     } finally {
         archiving.value = false;
     }

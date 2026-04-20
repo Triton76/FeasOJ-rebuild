@@ -151,21 +151,7 @@ export const caculateComScore = async (cid) => {
 
 // 管理员查看竞赛得分情况
 export const getScores = async (cid, page, itemsPerPage) => {
-    const resp = await axios.get(`${apiUrl}/contests/${cid}/scoreboard`, reqConfig())
-    const rows = resp.data?.data?.items ?? []
-    const start = Math.max((Number(page) - 1) * Number(itemsPerPage), 0)
-    const end = start + Number(itemsPerPage)
-    const users = rows.slice(start, end).map((item) => ({
-        username: item.username,
-        score: Number(item.total_score ?? item.solved ?? 0)
-    }))
-    return {
-        ...resp,
-        data: {
-            users,
-            total: rows.length
-        }
-    }
+    return await axios.get(`${apiUrl}/contests/${cid}/scoreboard`, reqConfig())
 }
 
 // 管理员获取IP统计

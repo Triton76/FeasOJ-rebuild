@@ -16,6 +16,7 @@ import moment from 'moment';
 import Heatmap from '../components/Profile/Heatmap.vue';
 import 'md-editor-v3/lib/preview.css';
 import { getMdPreviewTheme } from '../utils/theme.js';
+import { resolveApiErrorMessage } from '../utils/api/errors.js';
 
 const { t } = useI18n();
 
@@ -40,7 +41,7 @@ const headers = ref([
   { title: t('message.problemId'), value: 'problem_id', align: 'center' },
   { title: t('message.result'), value: 'result', align: 'center' },
   { title: t('message.lang'), value: 'language', align: 'center' },
-  { title: t('message.when'), value: 'time', align: 'center' },
+  { title: t('message.when'), value: 'submitted_at', align: 'center' },
 ]);
 
 // 计算属性来判断用户是否已经登录
@@ -222,10 +223,10 @@ onUnmounted(() => {
                   {{ item.problem_id }}
                 </v-btn>
               </td>
-              <td v-if="item.result === 'Running...'" class="text-center pa-4">
+              <td v-if="item.result === 'pending' || item.result === 'judging'" class="text-center pa-4">
                 <v-progress-circular indeterminate color="primary" size="24" width="2"></v-progress-circular>
               </td>
-              <td v-else :style="getResultStyle(item.result)" @click="showCode(item.code, item.language)"
+              <td v-else :style="getResultStyle(item.result)" @click="showCode('', item.language)"
                 class="text-center pa-4 result-cell">
                 <v-chip :color="getResultChipColor(item.result)" variant="tonal" size="small"
                   class="font-weight-medium">
@@ -239,7 +240,7 @@ onUnmounted(() => {
               </td>
               <td class="text-center pa-4">
                 <span class="text-body-2 text-medium-emphasis">
-                  {{ moment(item.time).format('YYYY-MM-DD HH:mm') }}
+                  {{ moment(item.submitted_at).format('YYYY-MM-DD HH:mm') }}
                 </span>
               </td>
             </tr>
