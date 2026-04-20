@@ -24,6 +24,8 @@ type Config struct {
 	JWTIssuer                string
 	JWTExpireH               string
 	ContestStatusScanSeconds int
+	EnableJudgeWriteback     bool
+	EnableScoreboard         bool
 }
 
 type fileConfig struct {
@@ -41,6 +43,10 @@ type fileConfig struct {
 	Scheduler struct {
 		ContestStatusScanSeconds int `yaml:"contest_status_scan_seconds"`
 	} `yaml:"scheduler"`
+	FeatureFlags struct {
+		EnableJudgeWriteback *bool `yaml:"enable_judge_writeback"`
+		EnableScoreboard     *bool `yaml:"enable_scoreboard"`
+	} `yaml:"feature_flags"`
 }
 
 func Load() (Config, error) {
@@ -49,6 +55,8 @@ func Load() (Config, error) {
 		JWTIssuer:                defaultJWTIssuer,
 		JWTExpireH:               defaultJWTExpireHours,
 		ContestStatusScanSeconds: defaultContestStatusScanSeconds,
+		EnableJudgeWriteback:     true,
+		EnableScoreboard:         true,
 	}
 
 	if err := loadFromYAML(&cfg); err != nil {
@@ -96,6 +104,12 @@ func loadFromYAML(cfg *Config) error {
 	if fc.Scheduler.ContestStatusScanSeconds > 0 {
 		cfg.ContestStatusScanSeconds = fc.Scheduler.ContestStatusScanSeconds
 	}
+	if fc.FeatureFlags.EnableJudgeWriteback != nil {
+		cfg.EnableJudgeWriteback = *fc.FeatureFlags.EnableJudgeWriteback
+	}
+	if fc.FeatureFlags.EnableScoreboard != nil {
+		cfg.EnableScoreboard = *fc.FeatureFlags.EnableScoreboard
+	}
 
 	return nil
 }
@@ -120,6 +134,12 @@ func loadFromEnv(cfg *Config) {
 		if sec, err := strconv.Atoi(v); err == nil && sec > 0 {
 			cfg.ContestStatusScanSeconds = sec
 		}
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_JUDGE_WRITEBACK"); v != "" {
+		cfg.EnableJudgeWriteback = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_SCOREBOARD"); v != "" {
+		cfg.EnableScoreboard = v == "1" || v == "true" || v == "TRUE"
 	}
 
 	if cfg.JWTIssuer == "" {

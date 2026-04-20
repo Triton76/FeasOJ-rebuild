@@ -22,6 +22,8 @@ type Submission struct {
 type Repository interface {
 	Create(ctx context.Context, s Submission) (Submission, error)
 	List(ctx context.Context, req Query) ([]Submission, error)
+	GetByID(ctx context.Context, submissionID int64) (Submission, error)
+	UpdateJudgeResult(ctx context.Context, submissionID int64, result string, score *int) (Submission, error)
 }
 
 type Query struct {

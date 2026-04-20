@@ -4,6 +4,7 @@ import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"FeasOJ/app/backend-rebuild/internal/queue"
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -25,6 +26,28 @@ func (r *fakeSubmitRepo) Create(ctx context.Context, s Submission) (Submission, 
 
 func (r *fakeSubmitRepo) List(ctx context.Context, req Query) ([]Submission, error) {
 	return r.items, nil
+}
+
+func (r *fakeSubmitRepo) GetByID(ctx context.Context, submissionID int64) (Submission, error) {
+	for _, item := range r.items {
+		if item.ID == submissionID {
+			return item, nil
+		}
+	}
+	return Submission{}, ports.ErrNotFound
+}
+
+func (r *fakeSubmitRepo) UpdateJudgeResult(ctx context.Context, submissionID int64, result string, score *int) (Submission, error) {
+	for i := range r.items {
+		if r.items[i].ID == submissionID {
+			r.items[i].Result = result
+			if score != nil {
+				r.items[i].Score = *score
+			}
+			return r.items[i], nil
+		}
+	}
+	return Submission{}, ports.ErrNotFound
 }
 
 func TestCreateSubmissionPersistsAndEnqueues(t *testing.T) {
@@ -118,4 +141,86 @@ func TestMemoryQueueIdempotentBySubmissionID(t *testing.T) {
 		t.Fatalf("expected ErrQueueEmpty, got %v", err)
 	}
 
+}
+
+func TestJudgeWritebackIdempotentBySubmissionID(t *testing.T) {
+	repo := newFakeSubmitRepo()
+	svc := NewService(repo, queue.NewMemorySubmissionQueue())
+
+	created, err := svc.CreateSubmission(context.Background(), ports.CreateSubmissionRequest{
+		UserID:     "u-1",
+		ProblemID:  1001,
+		Language:   "cpp",
+		SourceCode: "int main(){return 0;}",
+	})
+	if err != nil {
+		t.Fatalf("create submission failed: %v", err)
+	}
+
+	if _, err := svc.MarkSubmissionJudging(context.Background(), created.ID, "test"); err != nil {
+		t.Fatalf("mark judging failed: %v", err)
+	}
+
+	score := 100
+	first, err := svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+		SubmissionID: created.ID,
+		Result:       SubmissionResultAccepted,
+		Score:        &score,
+		Source:       "judgecore",
+	})
+	if err != nil {
+		t.Fatalf("first writeback failed: %v", err)
+	}
+	if first.Result != SubmissionResultAccepted {
+		t.Fatalf("expected accepted, got %s", first.Result)
+	}
+
+	second, err := svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+		SubmissionID: created.ID,
+		Result:       SubmissionResultAccepted,
+		Score:        &score,
+		Source:       "judgecore",
+	})
+	if err != nil {
+		t.Fatalf("second writeback should be idempotent, got: %v", err)
+	}
+	if second.Result != SubmissionResultAccepted {
+		t.Fatalf("expected accepted after duplicate writeback, got %s", second.Result)
+	}
+}
+
+func TestJudgeWritebackRejectsTerminalRollback(t *testing.T) {
+	repo := newFakeSubmitRepo()
+	svc := NewService(repo, queue.NewMemorySubmissionQueue())
+
+	created, err := svc.CreateSubmission(context.Background(), ports.CreateSubmissionRequest{
+		UserID:     "u-1",
+		ProblemID:  1001,
+		Language:   "cpp",
+		SourceCode: "int main(){return 0;}",
+	})
+	if err != nil {
+		t.Fatalf("create submission failed: %v", err)
+	}
+
+	if _, err := svc.MarkSubmissionJudging(context.Background(), created.ID, "test"); err != nil {
+		t.Fatalf("mark judging failed: %v", err)
+	}
+
+	if _, err := svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+		SubmissionID: created.ID,
+		Result:       SubmissionResultAccepted,
+		Source:       "judgecore",
+	}); err != nil {
+		t.Fatalf("initial writeback failed: %v", err)
+	}
+
+	_, err = svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+		SubmissionID: created.ID,
+		Result:       SubmissionResultWrongAnswer,
+		Source:       "judgecore",
+	})
+	if !errors.Is(err, ports.ErrConflict) {
+		t.Fatalf("expected ErrConflict for terminal rollback, got %v", err)
+	}
 }

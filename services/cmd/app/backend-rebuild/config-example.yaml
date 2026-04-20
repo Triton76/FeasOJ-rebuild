@@ -11,3 +11,7 @@ jwt:
 
 scheduler:
   contest_status_scan_seconds: 30
+
+feature_flags:
+  enable_judge_writeback: true
+  enable_scoreboard: true

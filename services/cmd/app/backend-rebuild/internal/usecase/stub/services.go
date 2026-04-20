@@ -122,6 +122,10 @@ func (CompetitionsService) JoinContest(context.Context, ports.JoinContestRequest
 	return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
 }
 
+func (CompetitionsService) GetScoreboard(context.Context, ports.ContestScoreboardQuery) (ports.ContestScoreboardResponse, error) {
+	return ports.ContestScoreboardResponse{}, ports.ErrNotImplemented
+}
+
 type DiscussionsService struct{}
 
 func (DiscussionsService) ListDiscussions(context.Context, ports.DiscussionsQuery) ([]ports.DiscussionDTO, error) {
@@ -148,6 +152,14 @@ func (SubmitRecordsService) CreateSubmission(context.Context, ports.CreateSubmis
 
 func (SubmitRecordsService) ListSubmissions(context.Context, ports.SubmissionsQuery) ([]ports.SubmissionDTO, error) {
 	return nil, ports.ErrNotImplemented
+}
+
+func (SubmitRecordsService) MarkSubmissionJudging(context.Context, int64, string) (ports.SubmissionDTO, error) {
+	return ports.SubmissionDTO{}, ports.ErrNotImplemented
+}
+
+func (SubmitRecordsService) WritebackSubmission(context.Context, ports.JudgeWritebackRequest) (ports.SubmissionDTO, error) {
+	return ports.SubmissionDTO{}, ports.ErrNotImplemented
 }
 
 type AdminService struct{}

@@ -50,6 +50,14 @@ func (s *fakeSubmitService) ListSubmissions(ctx context.Context, req ports.Submi
 	return []ports.SubmissionDTO{}, nil
 }
 
+func (s *fakeSubmitService) MarkSubmissionJudging(ctx context.Context, submissionID int64, source string) (ports.SubmissionDTO, error) {
+	return ports.SubmissionDTO{ID: submissionID, Result: "judging"}, nil
+}
+
+func (s *fakeSubmitService) WritebackSubmission(ctx context.Context, req ports.JudgeWritebackRequest) (ports.SubmissionDTO, error) {
+	return ports.SubmissionDTO{ID: req.SubmissionID, Result: req.Result}, nil
+}
+
 func TestAuthThenSubmitIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

@@ -1,6 +1,7 @@
 package submitrecords
 
 import (
+	"FeasOJ/app/backend-rebuild/internal/observability"
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"context"
 	"strings"
@@ -11,6 +12,19 @@ const (
 	defaultPage  = 1
 	defaultLimit = 20
 	maxLimit     = 100
+
+	SubmissionResultPending             = "pending"
+	SubmissionResultJudging             = "judging"
+	SubmissionResultAccepted            = "accepted"
+	SubmissionResultWrongAnswer         = "wrong_answer"
+	SubmissionResultCompileError        = "compile_error"
+	SubmissionResultRuntimeError        = "runtime_error"
+	SubmissionResultTimeLimitExceeded   = "time_limit_exceeded"
+	SubmissionResultMemoryLimitExceeded = "memory_limit_exceeded"
+	SubmissionResultOutputLimitExceeded = "output_limit_exceeded"
+	SubmissionResultPresentationError   = "presentation_error"
+	SubmissionResultPartiallyAccepted   = "partially_accepted"
+	SubmissionResultSystemError         = "system_error"
 )
 
 type Service struct {
@@ -112,6 +126,130 @@ func (s *Service) ListSubmissions(ctx context.Context, req ports.SubmissionsQuer
 		resp = append(resp, toDTO(item))
 	}
 	return resp, nil
+}
+
+func (s *Service) MarkSubmissionJudging(ctx context.Context, submissionID int64, source string) (ports.SubmissionDTO, error) {
+	if s.repo == nil {
+		return ports.SubmissionDTO{}, ports.ErrNotImplemented
+	}
+	if submissionID <= 0 {
+		return ports.SubmissionDTO{}, ports.ErrInvalidArgument
+	}
+
+	item, err := s.repo.GetByID(ctx, submissionID)
+	if err != nil {
+		return ports.SubmissionDTO{}, err
+	}
+
+	if item.Result == SubmissionResultJudging || isTerminalResult(item.Result) {
+		return toDTO(item), nil
+	}
+	if !isValidTransition(item.Result, SubmissionResultJudging) {
+		return ports.SubmissionDTO{}, ports.ErrConflict
+	}
+
+	updated, err := s.repo.UpdateJudgeResult(ctx, submissionID, SubmissionResultJudging, nil)
+	if err != nil {
+		return ports.SubmissionDTO{}, err
+	}
+	observability.LogJSON("submission.transition", map[string]any{
+		"submission_id": submissionID,
+		"previous_state": item.Result,
+		"new_state": SubmissionResultJudging,
+		"source": source,
+	})
+	return toDTO(updated), nil
+}
+
+func (s *Service) WritebackSubmission(ctx context.Context, req ports.JudgeWritebackRequest) (ports.SubmissionDTO, error) {
+	success := false
+	defer func() {
+		if success {
+			observability.IncWritebackSuccess()
+		} else {
+			observability.IncWritebackFailure()
+		}
+	}()
+
+	if s.repo == nil {
+		return ports.SubmissionDTO{}, ports.ErrNotImplemented
+	}
+	if req.SubmissionID <= 0 || !isTerminalResult(req.Result) {
+		return ports.SubmissionDTO{}, ports.ErrInvalidArgument
+	}
+	if req.Score != nil && *req.Score < 0 {
+		return ports.SubmissionDTO{}, ports.ErrInvalidArgument
+	}
+
+	item, err := s.repo.GetByID(ctx, req.SubmissionID)
+	if err != nil {
+		return ports.SubmissionDTO{}, err
+	}
+
+	if item.Result == req.Result && isTerminalResult(item.Result) {
+		success = true
+		return toDTO(item), nil
+	}
+	if !isValidTransition(item.Result, req.Result) {
+		return ports.SubmissionDTO{}, ports.ErrConflict
+	}
+
+	updated, err := s.repo.UpdateJudgeResult(ctx, req.SubmissionID, req.Result, req.Score)
+	if err != nil {
+		return ports.SubmissionDTO{}, err
+	}
+	observability.LogJSON("submission.writeback", map[string]any{
+		"submission_id": req.SubmissionID,
+		"previous_state": item.Result,
+		"new_state": req.Result,
+		"source": req.Source,
+	})
+	success = true
+	return toDTO(updated), nil
+}
+
+func isValidTransition(from, to string) bool {
+	from = strings.TrimSpace(from)
+	to = strings.TrimSpace(to)
+	if !isKnownResult(from) || !isKnownResult(to) {
+		return false
+	}
+	if from == to {
+		return true
+	}
+	if from == SubmissionResultPending && to == SubmissionResultJudging {
+		return true
+	}
+	if from == SubmissionResultJudging && isTerminalResult(to) {
+		return true
+	}
+	return false
+}
+
+func isKnownResult(v string) bool {
+	v = strings.TrimSpace(v)
+	switch v {
+	case SubmissionResultPending,
+		SubmissionResultJudging,
+		SubmissionResultAccepted,
+		SubmissionResultWrongAnswer,
+		SubmissionResultCompileError,
+		SubmissionResultRuntimeError,
+		SubmissionResultTimeLimitExceeded,
+		SubmissionResultMemoryLimitExceeded,
+		SubmissionResultOutputLimitExceeded,
+		SubmissionResultPresentationError,
+		SubmissionResultPartiallyAccepted,
+		SubmissionResultSystemError:
+		return true
+	default:
+		return false
+	}
+}
+
+func isTerminalResult(v string) bool {
+	v = strings.TrimSpace(v)
+	return v != SubmissionResultPending && v != SubmissionResultJudging && isKnownResult(v)
 }
 
 func toDTO(s Submission) ports.SubmissionDTO {

@@ -42,6 +42,9 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/contests", h.ListContests)
 	authed.POST("/contests", h.CreateContest)
 	authed.GET("/contests/:contest_id", h.GetContest)
+	if cfg.EnableScoreboard {
+		authed.GET("/contests/:contest_id/scoreboard", h.GetScoreboard)
+	}
 	authed.PATCH("/contests/:contest_id", h.UpdateContest)
 	authed.DELETE("/contests/:contest_id", h.DeleteContest)
 	authed.POST("/contests/join", h.JoinContest)
@@ -53,6 +56,10 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 
 	authed.POST("/submit-records", h.CreateSubmission)
 	authed.GET("/submit-records", h.ListSubmissions)
+	authed.GET("/metrics/runtime", h.RuntimeMetrics)
+	if cfg.EnableJudgeWriteback {
+		api.POST("/judge/writeback", h.JudgeWriteback)
+	}
 
 	admin := authed.Group("/admin")
 	admin.Use(middleware.AdminOnly())

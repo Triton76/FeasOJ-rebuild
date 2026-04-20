@@ -34,6 +34,14 @@ type Participant struct {
 	JoinedAt  *time.Time
 }
 
+type ScoreboardSubmission struct {
+	UserID      string
+	Username    string
+	ProblemID   int64
+	Result      string
+	SubmittedAt time.Time
+}
+
 type Repository interface {
 	ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]Contest, error)
 	GetVisibleByID(ctx context.Context, contestID int64, actorUserID, actorRole string) (Contest, error)
@@ -42,4 +50,5 @@ type Repository interface {
 	Update(ctx context.Context, c Contest) (Contest, error)
 	Delete(ctx context.Context, contestID int64) error
 	CreateParticipant(ctx context.Context, p Participant) (Participant, error)
+	ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error)
 }

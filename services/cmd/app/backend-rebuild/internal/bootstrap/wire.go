@@ -75,6 +75,9 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			services.Competitions = competitionsusecase.NewService(competitionsRepository)
 			services.Discussions = discussionsusecase.NewService(discussionsRepository)
 			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository, submissionQueue)
+			if cfg.EnableJudgeWriteback {
+				queue.NewJudgeWorker(submissionQueue, services.SubmitRecords, 300*time.Millisecond).Start(schedulerCtx)
+			}
 			scheduler.StartContestStatusReconciler(schedulerCtx, db, time.Duration(cfg.ContestStatusScanSeconds)*time.Second)
 			log.Println("[backend-rebuild] all phase-1 services enabled with mysql backend")
 		}

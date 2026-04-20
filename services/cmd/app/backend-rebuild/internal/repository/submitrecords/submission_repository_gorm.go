@@ -1,9 +1,11 @@
 package submitrecordsrepo
 
 import (
+	"FeasOJ/app/backend-rebuild/internal/ports"
 	submitrecordsusecase "FeasOJ/app/backend-rebuild/internal/usecase/submitrecords"
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -59,6 +61,38 @@ func (r *Repository) List(ctx context.Context, req submitrecordsusecase.Query) (
 		resp = append(resp, fromRow(row))
 	}
 	return resp, nil
+}
+
+func (r *Repository) GetByID(ctx context.Context, submissionID int64) (submitrecordsusecase.Submission, error) {
+	var row submissionRow
+	err := r.db.WithContext(ctx).Where("id = ?", submissionID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return submitrecordsusecase.Submission{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return submitrecordsusecase.Submission{}, err
+	}
+	return fromRow(row), nil
+}
+
+func (r *Repository) UpdateJudgeResult(ctx context.Context, submissionID int64, result string, score *int) (submitrecordsusecase.Submission, error) {
+	updates := map[string]any{
+		"result":     result,
+		"updated_at": time.Now().UTC(),
+	}
+	if score != nil {
+		updates["score"] = *score
+	}
+
+	res := r.db.WithContext(ctx).Model(&submissionRow{}).Where("id = ?", submissionID).Updates(updates)
+	if res.Error != nil {
+		return submitrecordsusecase.Submission{}, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return submitrecordsusecase.Submission{}, ports.ErrNotFound
+	}
+
+	return r.GetByID(ctx, submissionID)
 }
 
 func toRow(s submitrecordsusecase.Submission) submissionRow {

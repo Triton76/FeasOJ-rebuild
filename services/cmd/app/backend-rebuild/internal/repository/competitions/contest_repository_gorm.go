@@ -43,6 +43,14 @@ type participantRow struct {
 	UpdatedAt time.Time  `gorm:"column:updated_at"`
 }
 
+type scoreboardSubmissionRow struct {
+	UserID      string    `gorm:"column:user_id"`
+	Username    string    `gorm:"column:username"`
+	ProblemID   int64     `gorm:"column:problem_id"`
+	Result      string    `gorm:"column:result"`
+	SubmittedAt time.Time `gorm:"column:submitted_at"`
+}
+
 func (participantRow) TableName() string { return "contest_participants" }
 
 type Repository struct{ db *gorm.DB }
@@ -172,6 +180,32 @@ func (r *Repository) CreateParticipant(ctx context.Context, p competitionsusecas
 		return competitionsusecase.Participant{}, err
 	}
 	return competitionsusecase.Participant{ID: row.ID, ContestID: row.ContestID, UserID: row.UserID, Status: row.Status, JoinedAt: row.JoinedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *Repository) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]competitionsusecase.ScoreboardSubmission, error) {
+	var rows []scoreboardSubmissionRow
+	err := r.db.WithContext(ctx).
+		Table("submissions AS s").
+		Select("s.user_id, u.username, s.problem_id, s.result, s.submitted_at").
+		Joins("JOIN users AS u ON u.id = s.user_id").
+		Where("s.contest_id = ? AND s.submitted_at < ?", contestID, before).
+		Order("s.submitted_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]competitionsusecase.ScoreboardSubmission, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, competitionsusecase.ScoreboardSubmission{
+			UserID:      row.UserID,
+			Username:    row.Username,
+			ProblemID:   row.ProblemID,
+			Result:      row.Result,
+			SubmittedAt: row.SubmittedAt,
+		})
+	}
+	return resp, nil
 }
 
 func toContest(r contestRow) competitionsusecase.Contest {

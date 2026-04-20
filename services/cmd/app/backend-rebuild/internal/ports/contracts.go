@@ -39,6 +39,7 @@ type CompetitionsService interface {
 	UpdateContest(ctx context.Context, req UpdateContestRequest) (ContestDTO, error)
 	DeleteContest(ctx context.Context, req DeleteContestRequest) error
 	JoinContest(ctx context.Context, req JoinContestRequest) (ContestParticipantDTO, error)
+	GetScoreboard(ctx context.Context, req ContestScoreboardQuery) (ContestScoreboardResponse, error)
 }
 
 type DiscussionsService interface {
@@ -51,6 +52,8 @@ type DiscussionsService interface {
 type SubmitRecordsService interface {
 	CreateSubmission(ctx context.Context, req CreateSubmissionRequest) (SubmissionDTO, error)
 	ListSubmissions(ctx context.Context, req SubmissionsQuery) ([]SubmissionDTO, error)
+	MarkSubmissionJudging(ctx context.Context, submissionID int64, source string) (SubmissionDTO, error)
+	WritebackSubmission(ctx context.Context, req JudgeWritebackRequest) (SubmissionDTO, error)
 }
 
 type AdminService interface {
@@ -280,6 +283,27 @@ type ContestParticipantDTO struct {
 	Status    string `json:"status"`
 }
 
+type ContestScoreboardQuery struct {
+	ContestID int64 `json:"contest_id"`
+}
+
+type ContestScoreboardItem struct {
+	Rank           int    `json:"rank"`
+	UserID         string `json:"user_id"`
+	Username       string `json:"username"`
+	Solved         int    `json:"solved"`
+	PenaltyMinutes int    `json:"penalty_minutes"`
+	ReachedAt      string `json:"reached_at"`
+}
+
+type ContestScoreboardResponse struct {
+	ContestID      int64                 `json:"contest_id"`
+	FreezeActive   bool                  `json:"freeze_active"`
+	FreezeStartAt  string                `json:"freeze_start_at"`
+	GeneratedAt    string                `json:"generated_at"`
+	VisibleItems   []ContestScoreboardItem `json:"items"`
+}
+
 type DiscussionsQuery struct {
 	Page  int `form:"page"`
 	Limit int `form:"limit"`
@@ -332,6 +356,13 @@ type SubmissionsQuery struct {
 	ContestID int64  `form:"contest_id"`
 	Page      int    `form:"page"`
 	Limit     int    `form:"limit"`
+}
+
+type JudgeWritebackRequest struct {
+	SubmissionID int64  `json:"submission_id"`
+	Result       string `json:"result"`
+	Score        *int   `json:"score,omitempty"`
+	Source       string `json:"source"`
 }
 
 type SubmissionDTO struct {

@@ -55,3 +55,18 @@ func (h Handlers) ListSubmissions(c *gin.Context) {
 	}
 	ok(c, resp)
 }
+
+func (h Handlers) JudgeWriteback(c *gin.Context) {
+	var req ports.JudgeWritebackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.SubmitRecords.WritebackSubmission(c.Request.Context(), req)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}

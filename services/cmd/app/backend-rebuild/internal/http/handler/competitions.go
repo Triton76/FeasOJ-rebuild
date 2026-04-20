@@ -125,3 +125,18 @@ func (h Handlers) JoinContest(c *gin.Context) {
 	}
 	ok(c, resp)
 }
+
+func (h Handlers) GetScoreboard(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	resp, err := h.Competitions.GetScoreboard(c.Request.Context(), ports.ContestScoreboardQuery{ContestID: contestID})
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}

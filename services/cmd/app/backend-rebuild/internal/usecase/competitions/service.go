@@ -1,11 +1,13 @@
 package competitions
 
 import (
+	"FeasOJ/app/backend-rebuild/internal/observability"
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"FeasOJ/app/backend-rebuild/internal/security"
 	passwordutil "FeasOJ/pkg/auth"
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,9 +20,14 @@ const (
 	maxLimit     = 100
 )
 
-type Service struct{ repo Repository }
+type Service struct {
+	repo  Repository
+	nowFn func() time.Time
+}
 
-func NewService(repo Repository) *Service { return &Service{repo: repo} }
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo, nowFn: time.Now}
+}
 
 func (s *Service) ListContests(ctx context.Context, req ports.ContestsQuery) ([]ports.ContestDTO, error) {
 	if s.repo == nil {
@@ -265,6 +272,184 @@ func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest)
 		return ports.ContestParticipantDTO{}, err
 	}
 	return ports.ContestParticipantDTO{ID: p.ID, ContestID: p.ContestID, UserID: p.UserID, Status: p.Status}, nil
+}
+
+func (s *Service) GetScoreboard(ctx context.Context, req ports.ContestScoreboardQuery) (ports.ContestScoreboardResponse, error) {
+	startAt := time.Now()
+	success := false
+	defer func() {
+		observability.ObserveScoreboardQueryLatency(time.Since(startAt), success)
+	}()
+
+	if s.repo == nil {
+		return ports.ContestScoreboardResponse{}, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 {
+		return ports.ContestScoreboardResponse{}, ports.ErrInvalidArgument
+	}
+
+	claims, _ := security.ClaimsFromContext(ctx)
+	contest, err := s.repo.GetVisibleByID(ctx, req.ContestID, strings.TrimSpace(claims.UserID), strings.TrimSpace(claims.Role))
+	if err != nil {
+		return ports.ContestScoreboardResponse{}, err
+	}
+
+	now := s.nowFn().UTC()
+	cutoff := now
+	freezeActive := false
+	freezeStartAt := ""
+
+	if contest.EndAt != nil {
+		contestEnd := contest.EndAt.UTC()
+		freezeStart := contestEnd.Add(-60 * time.Minute)
+		freezeStartAt = freezeStart.Format(time.RFC3339)
+		switch {
+		case now.Before(freezeStart):
+			cutoff = now
+		case now.Before(contestEnd):
+			cutoff = freezeStart
+			freezeActive = true
+		default:
+			cutoff = contestEnd
+		}
+	}
+
+	submissions, err := s.repo.ListScoreboardSubmissions(ctx, req.ContestID, cutoff)
+	if err != nil {
+		return ports.ContestScoreboardResponse{}, err
+	}
+
+	items := buildScoreboardItems(submissions, contest.StartAt)
+	observability.LogJSON("scoreboard.query", map[string]any{
+		"contest_id": req.ContestID,
+		"freeze_active": freezeActive,
+		"items": len(items),
+	})
+	success = true
+
+	return ports.ContestScoreboardResponse{
+		ContestID:     req.ContestID,
+		FreezeActive:  freezeActive,
+		FreezeStartAt: freezeStartAt,
+		GeneratedAt:   now.Format(time.RFC3339),
+		VisibleItems:  items,
+	}, nil
+}
+
+type problemBucket struct {
+	wrongAttempts int
+	ceAttempts    int
+	solved        bool
+	acceptedAt    time.Time
+}
+
+type userAgg struct {
+	userID      string
+	username    string
+	solved      int
+	penalty     int
+	reachedAt   time.Time
+	problemStat map[int64]*problemBucket
+}
+
+func buildScoreboardItems(submissions []ScoreboardSubmission, contestStart *time.Time) []ports.ContestScoreboardItem {
+	byUser := make(map[string]*userAgg)
+
+	for _, sub := range submissions {
+		agg, ok := byUser[sub.UserID]
+		if !ok {
+			agg = &userAgg{
+				userID:      sub.UserID,
+				username:    sub.Username,
+				problemStat: make(map[int64]*problemBucket),
+			}
+			byUser[sub.UserID] = agg
+		}
+
+		bucket, ok := agg.problemStat[sub.ProblemID]
+		if !ok {
+			bucket = &problemBucket{}
+			agg.problemStat[sub.ProblemID] = bucket
+		}
+
+		if bucket.solved {
+			continue
+		}
+
+		switch strings.TrimSpace(sub.Result) {
+		case "accepted":
+			bucket.solved = true
+			bucket.acceptedAt = sub.SubmittedAt.UTC()
+		case "compile_error":
+			bucket.ceAttempts++
+		case "pending", "judging":
+			// ignore non-terminal states in scoreboard aggregation
+		default:
+			bucket.wrongAttempts++
+		}
+	}
+
+	for _, agg := range byUser {
+		for _, bucket := range agg.problemStat {
+			if !bucket.solved {
+				continue
+			}
+			agg.solved++
+			attemptPenalty := bucket.wrongAttempts + bucket.ceAttempts
+			agg.penalty += attemptPenalty * 20
+			if contestStart != nil {
+				minutes := int(bucket.acceptedAt.Sub(contestStart.UTC()).Minutes())
+				if minutes > 0 {
+					agg.penalty += minutes
+				}
+			}
+			if agg.reachedAt.IsZero() || bucket.acceptedAt.After(agg.reachedAt) {
+				agg.reachedAt = bucket.acceptedAt
+			}
+		}
+	}
+
+	sorted := make([]*userAgg, 0, len(byUser))
+	for _, agg := range byUser {
+		sorted = append(sorted, agg)
+	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		a := sorted[i]
+		b := sorted[j]
+		if a.solved != b.solved {
+			return a.solved > b.solved
+		}
+		if a.penalty != b.penalty {
+			return a.penalty < b.penalty
+		}
+		if !a.reachedAt.Equal(b.reachedAt) {
+			if a.reachedAt.IsZero() {
+				return false
+			}
+			if b.reachedAt.IsZero() {
+				return true
+			}
+			return a.reachedAt.Before(b.reachedAt)
+		}
+		return a.userID < b.userID
+	})
+
+	items := make([]ports.ContestScoreboardItem, 0, len(sorted))
+	for i, row := range sorted {
+		reachedAt := ""
+		if !row.reachedAt.IsZero() {
+			reachedAt = row.reachedAt.UTC().Format(time.RFC3339)
+		}
+		items = append(items, ports.ContestScoreboardItem{
+			Rank:           i + 1,
+			UserID:         row.userID,
+			Username:       row.username,
+			Solved:         row.solved,
+			PenaltyMinutes: row.penalty,
+			ReachedAt:      reachedAt,
+		})
+	}
+	return items
 }
 
 func canManageContest(role string) bool {
