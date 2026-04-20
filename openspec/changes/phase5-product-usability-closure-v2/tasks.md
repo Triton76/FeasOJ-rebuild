@@ -9,7 +9,7 @@
 - [x] 2.1 [P0][Depends: 1.3][AC: 新增 contest-problem 读写契约通过接口评审] Add contest-problem binding contracts and DTOs.
 - [x] 2.2 [P0][Depends: 2.1][AC: 完成绑定查询/全量更新 API 且具备权限校验] Implement binding query and batch replace APIs.
 - [x] 2.3 [P0][Depends: 2.2][AC: 发布前无绑定题目时返回冲突错误] Add publish gate validation requiring at least one bound problem.
-- [ ] 2.4 [P1][Depends: 2.2][AC: 唯一性/非法引用场景测试通过] Add integrity tests for duplicate problem/order/alias and invalid references.
+- [x] 2.4 [P1][Depends: 2.2][AC: 唯一性/非法引用场景测试通过] Add integrity tests for duplicate problem/order/alias and invalid references.
 
 ## 3. Class Join Usability & Feedback
 
@@ -22,7 +22,7 @@
 
 - [x] 4.1 [P0][Depends: 1.2][AC: 明确“接入或下线”决策并固化为配置策略] Finalize policy for verification-code/password-reset capability.
 - [x] 4.2 [P0][Depends: 4.1][AC: enabled/disabled 两种策略均有确定行为和错误码] Implement policy-driven endpoint behavior.
-- [ ] 4.3 [P0][Depends: 4.2][AC: 验证码过期/错误/限流场景测试通过] Implement verification code constraints and validation paths.
+- [x] 4.3 [P0][Depends: 4.2][AC: 验证码过期/错误/限流场景测试通过] Implement verification code constraints and validation paths.
 - [ ] 4.4 [P1][Depends: 4.2][AC: 密码重置成功后旧凭证失效策略验证通过] Add credential invalidation handling and tests.
 
 ## 5. Admin Role/Status Governance Completion

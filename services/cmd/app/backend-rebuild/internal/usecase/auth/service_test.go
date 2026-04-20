@@ -11,12 +11,14 @@ import (
 type fakeAuthRepo struct {
 	usersByID       map[string]User
 	usersByUsername map[string]User
+	usersByEmail    map[string]User
 }
 
 func newFakeAuthRepo() *fakeAuthRepo {
 	return &fakeAuthRepo{
 		usersByID:       make(map[string]User),
 		usersByUsername: make(map[string]User),
+		usersByEmail:    make(map[string]User),
 	}
 }
 
@@ -26,6 +28,7 @@ func (r *fakeAuthRepo) Create(ctx context.Context, user User) (User, error) {
 	}
 	r.usersByID[user.ID] = user
 	r.usersByUsername[user.Username] = user
+	r.usersByEmail[user.Email] = user
 	return user, nil
 }
 
@@ -46,7 +49,16 @@ func (r *fakeAuthRepo) GetByID(ctx context.Context, id string) (User, error) {
 }
 
 func (r *fakeAuthRepo) UpdatePasswordByEmail(ctx context.Context, email, passwordHash string, updatedAt time.Time) (bool, error) {
-	return false, ports.ErrNotImplemented
+	u, ok := r.usersByEmail[email]
+	if !ok {
+		return false, nil
+	}
+	u.PasswordHash = passwordHash
+	u.UpdatedAt = updatedAt
+	r.usersByID[u.ID] = u
+	r.usersByUsername[u.Username] = u
+	r.usersByEmail[email] = u
+	return true, nil
 }
 
 func TestRegisterAndLoginAndVerify(t *testing.T) {
@@ -102,5 +114,43 @@ func TestRegisterInvalidEmail(t *testing.T) {
 	})
 	if err != ports.ErrInvalidArgument {
 		t.Fatalf("expected ErrInvalidArgument, got %v", err)
+	}
+}
+
+func TestPasswordResetDisabledPolicy(t *testing.T) {
+	repo := newFakeAuthRepo()
+	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour, false)
+
+	_, err := svc.SendPasswordResetCode(context.Background(), ports.PasswordResetCodeRequest{Email: "alice@example.com"})
+	if err != ports.ErrCapabilityDisabled {
+		t.Fatalf("expected ErrCapabilityDisabled, got %v", err)
+	}
+}
+
+func TestPasswordResetRateLimitedAndInvalidOrExpiredCode(t *testing.T) {
+	repo := newFakeAuthRepo()
+	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour, true)
+
+	_, err := svc.Register(context.Background(), ports.RegisterRequest{Username: "alice", Email: "alice@example.com", Password: "password123"})
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+
+	if _, err := svc.SendPasswordResetCode(context.Background(), ports.PasswordResetCodeRequest{Email: "alice@example.com"}); err != nil {
+		t.Fatalf("send code failed: %v", err)
+	}
+	if _, err := svc.SendPasswordResetCode(context.Background(), ports.PasswordResetCodeRequest{Email: "alice@example.com"}); err != ports.ErrRateLimited {
+		t.Fatalf("expected ErrRateLimited, got %v", err)
+	}
+
+	if err := svc.ResetPassword(context.Background(), ports.PasswordResetRequest{Email: "alice@example.com", Code: "000000", NewPassword: "new-password"}); err != ports.ErrInvalidArgument {
+		t.Fatalf("expected ErrInvalidArgument for invalid code, got %v", err)
+	}
+
+	rec := svc.resetCodes["alice@example.com"]
+	rec.ExpiresAt = time.Now().UTC().Add(-time.Second)
+	svc.resetCodes["alice@example.com"] = rec
+	if err := svc.ResetPassword(context.Background(), ports.PasswordResetRequest{Email: "alice@example.com", Code: rec.Code, NewPassword: "new-password"}); err != ports.ErrInvalidArgument {
+		t.Fatalf("expected ErrInvalidArgument for expired code, got %v", err)
 	}
 }
