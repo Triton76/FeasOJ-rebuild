@@ -504,11 +504,13 @@ type AdminUsersQuery struct {
 }
 
 type UpdateUserStatusRequest struct {
-	UserID string `json:"user_id"`
-	Status string `json:"status"`
+	UserID      string `json:"user_id"`
+	Status      string `json:"status"`
+	ActorUserID string `json:"-"`
 }
 
 type UpdateUserRoleRequest struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	UserID      string `json:"user_id"`
+	Role        string `json:"role"`
+	ActorUserID string `json:"-"`
 }

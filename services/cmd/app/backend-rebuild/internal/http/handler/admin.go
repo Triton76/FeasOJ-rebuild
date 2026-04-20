@@ -31,6 +31,7 @@ func (h Handlers) AdminUpdateUserStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req.ActorUserID = c.GetString("auth_user_id")
 
 	resp, err := h.Admin.UpdateUserStatus(c.Request.Context(), req)
 	if err != nil {
@@ -46,6 +47,7 @@ func (h Handlers) AdminUpdateUserRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req.ActorUserID = c.GetString("auth_user_id")
 
 	resp, err := h.Admin.UpdateUserRole(c.Request.Context(), req)
 	if err != nil {

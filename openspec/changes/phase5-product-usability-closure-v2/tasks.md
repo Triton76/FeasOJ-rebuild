@@ -29,8 +29,8 @@
 
 - [x] 5.1 [P0][Depends: 1.3][AC: 新增角色治理 API 合约并完成权限评审] Add admin role update contract separated from status update.
 - [x] 5.2 [P0][Depends: 5.1][AC: 非 admin 调用返回 forbidden，admin 调用成功可追踪] Implement role update handler/usecase/repository path.
-- [ ] 5.3 [P1][Depends: 5.2][AC: 角色/状态操作均写入结构化审计记录] Add governance audit logging fields and persistence.
-- [ ] 5.4 [P1][Depends: 5.2][AC: 角色变更与状态变更互不污染的测试通过] Add separation tests for role vs status operations.
+- [x] 5.3 [P1][Depends: 5.2][AC: 角色/状态操作均写入结构化审计记录] Add governance audit logging fields and persistence.
+- [x] 5.4 [P1][Depends: 5.2][AC: 角色变更与状态变更互不污染的测试通过] Add separation tests for role vs status operations.
 
 ## 6. Config & Ops Entry Convergence
 

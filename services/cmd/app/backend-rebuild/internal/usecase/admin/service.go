@@ -3,8 +3,11 @@ package admin
 import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"strings"
+	"time"
 )
 
 const (
@@ -65,6 +68,14 @@ func (s *Service) UpdateUserStatus(ctx context.Context, req ports.UpdateUserStat
 		return ports.UserDTO{}, ports.ErrInvalidArgument
 	}
 
+	before, err := s.repo.GetByID(ctx, userID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.UserDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.UserDTO{}, err
+	}
+
 	affected, err := s.repo.UpdateUserStatus(ctx, userID, status)
 	if err != nil {
 		return ports.UserDTO{}, err
@@ -80,6 +91,8 @@ func (s *Service) UpdateUserStatus(ctx context.Context, req ports.UpdateUserStat
 	if err != nil {
 		return ports.UserDTO{}, err
 	}
+
+	emitAdminAudit("update_user_status", req.ActorUserID, u.ID, map[string]any{"status": before.Status}, map[string]any{"status": u.Status})
 
 	return toUserDTO(u), nil
 }
@@ -98,6 +111,14 @@ func (s *Service) UpdateUserRole(ctx context.Context, req ports.UpdateUserRoleRe
 		return ports.UserDTO{}, ports.ErrInvalidArgument
 	}
 
+	before, err := s.repo.GetByID(ctx, userID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.UserDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.UserDTO{}, err
+	}
+
 	affected, err := s.repo.UpdateUserRole(ctx, userID, role)
 	if err != nil {
 		return ports.UserDTO{}, err
@@ -114,7 +135,26 @@ func (s *Service) UpdateUserRole(ctx context.Context, req ports.UpdateUserRoleRe
 		return ports.UserDTO{}, err
 	}
 
+	emitAdminAudit("update_user_role", req.ActorUserID, u.ID, map[string]any{"role": before.Role}, map[string]any{"role": u.Role})
+
 	return toUserDTO(u), nil
+}
+
+func emitAdminAudit(action, actorUserID, targetUserID string, oldValues, newValues map[string]any) {
+	entry := map[string]any{
+		"action":     action,
+		"actor":      strings.TrimSpace(actorUserID),
+		"target_user": targetUserID,
+		"old":        oldValues,
+		"new":        newValues,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+	}
+	b, err := json.Marshal(entry)
+	if err != nil {
+		log.Printf("admin_audit marshal error: %v", err)
+		return
+	}
+	log.Printf("admin_audit %s", string(b))
 }
 
 func toUserDTO(u User) ports.UserDTO {
