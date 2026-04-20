@@ -39,6 +39,15 @@ func (h Handlers) ListSubmissions(c *gin.Context) {
 		return
 	}
 
+	actorUserID := c.GetString("auth_user_id")
+	if actorUserID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+	if c.GetString("auth_role") != "admin" {
+		req.UserID = actorUserID
+	}
+
 	resp, err := h.SubmitRecords.ListSubmissions(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)

@@ -34,10 +34,16 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.POST("/classes/memberships/review", h.ReviewMembership)
 
 	authed.GET("/problems", h.ListProblems)
+	authed.POST("/problems", h.CreateProblem)
 	authed.GET("/problems/:problem_id", h.GetProblem)
+	authed.PATCH("/problems/:problem_id", h.UpdateProblem)
+	authed.DELETE("/problems/:problem_id", h.DeleteProblem)
 
 	authed.GET("/contests", h.ListContests)
+	authed.POST("/contests", h.CreateContest)
 	authed.GET("/contests/:contest_id", h.GetContest)
+	authed.PATCH("/contests/:contest_id", h.UpdateContest)
+	authed.DELETE("/contests/:contest_id", h.DeleteContest)
 	authed.POST("/contests/join", h.JoinContest)
 
 	authed.GET("/discussions", h.ListDiscussions)

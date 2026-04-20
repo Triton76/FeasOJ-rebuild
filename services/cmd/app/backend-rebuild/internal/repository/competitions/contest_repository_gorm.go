@@ -5,6 +5,7 @@ import (
 	competitionsusecase "FeasOJ/app/backend-rebuild/internal/usecase/competitions"
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -23,8 +24,11 @@ type contestRow struct {
 	RuleType     string     `gorm:"column:rule_type"`
 	Status       string     `gorm:"column:status"`
 	IsEncrypted  bool       `gorm:"column:is_encrypted"`
+	PasswordHash string     `gorm:"column:password_hash"`
 	StartAt      *time.Time `gorm:"column:start_at"`
 	EndAt        *time.Time `gorm:"column:end_at"`
+	CreatedAt    time.Time  `gorm:"column:created_at"`
+	UpdatedAt    time.Time  `gorm:"column:updated_at"`
 }
 
 func (contestRow) TableName() string { return "contests" }
@@ -45,8 +49,9 @@ type Repository struct{ db *gorm.DB }
 
 func NewRepository(db *gorm.DB) *Repository { return &Repository{db: db} }
 
-func (r *Repository) List(ctx context.Context, offset, limit int, visibility, ruleType, status string) ([]competitionsusecase.Contest, error) {
+func (r *Repository) ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]competitionsusecase.Contest, error) {
 	q := r.db.WithContext(ctx).Model(&contestRow{})
+	q = applyContestVisibilityScope(q, actorUserID, actorRole)
 	if visibility != "" {
 		q = q.Where("visibility = ?", visibility)
 	}
@@ -70,6 +75,21 @@ func (r *Repository) List(ctx context.Context, offset, limit int, visibility, ru
 	return resp, nil
 }
 
+func (r *Repository) GetVisibleByID(ctx context.Context, contestID int64, actorUserID, actorRole string) (competitionsusecase.Contest, error) {
+	q := r.db.WithContext(ctx).Model(&contestRow{}).Where("id = ?", contestID)
+	q = applyContestVisibilityScope(q, actorUserID, actorRole)
+
+	var row contestRow
+	err := q.Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return competitionsusecase.Contest{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return competitionsusecase.Contest{}, err
+	}
+	return toContest(row), nil
+}
+
 func (r *Repository) GetByID(ctx context.Context, contestID int64) (competitionsusecase.Contest, error) {
 	var row contestRow
 	err := r.db.WithContext(ctx).Where("id = ?", contestID).Take(&row).Error
@@ -80,6 +100,67 @@ func (r *Repository) GetByID(ctx context.Context, contestID int64) (competitions
 		return competitionsusecase.Contest{}, err
 	}
 	return toContest(row), nil
+}
+
+func (r *Repository) Create(ctx context.Context, c competitionsusecase.Contest) (competitionsusecase.Contest, error) {
+	row := contestRow{
+		Title:        c.Title,
+		Subtitle:     c.Subtitle,
+		Description:  c.Description,
+		Announcement: c.Announcement,
+		OwnerUserID:  c.OwnerUserID,
+		ClassID:      c.ClassID,
+		Visibility:   c.Visibility,
+		RuleType:     c.RuleType,
+		Status:       c.Status,
+		IsEncrypted:  c.IsEncrypted,
+		PasswordHash: c.PasswordHash,
+		StartAt:      c.StartAt,
+		EndAt:        c.EndAt,
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
+	}
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+		return competitionsusecase.Contest{}, err
+	}
+	return toContest(row), nil
+}
+
+func (r *Repository) Update(ctx context.Context, c competitionsusecase.Contest) (competitionsusecase.Contest, error) {
+	updates := map[string]any{
+		"title":         c.Title,
+		"subtitle":      c.Subtitle,
+		"description":   c.Description,
+		"announcement":  c.Announcement,
+		"class_id":      c.ClassID,
+		"visibility":    c.Visibility,
+		"rule_type":     c.RuleType,
+		"status":        c.Status,
+		"is_encrypted":  c.IsEncrypted,
+		"password_hash": c.PasswordHash,
+		"start_at":      c.StartAt,
+		"end_at":        c.EndAt,
+		"updated_at":    c.UpdatedAt,
+	}
+	res := r.db.WithContext(ctx).Model(&contestRow{}).Where("id = ?", c.ID).Updates(updates)
+	if res.Error != nil {
+		return competitionsusecase.Contest{}, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return competitionsusecase.Contest{}, ports.ErrNotFound
+	}
+	return r.GetByID(ctx, c.ID)
+}
+
+func (r *Repository) Delete(ctx context.Context, contestID int64) error {
+	res := r.db.WithContext(ctx).Where("id = ?", contestID).Delete(&contestRow{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ports.ErrNotFound
+	}
+	return nil
 }
 
 func (r *Repository) CreateParticipant(ctx context.Context, p competitionsusecase.Participant) (competitionsusecase.Participant, error) {
@@ -94,7 +175,29 @@ func (r *Repository) CreateParticipant(ctx context.Context, p competitionsusecas
 }
 
 func toContest(r contestRow) competitionsusecase.Contest {
-	return competitionsusecase.Contest{ID: r.ID, Title: r.Title, Subtitle: r.Subtitle, Description: r.Description, Announcement: r.Announcement, OwnerUserID: r.OwnerUserID, ClassID: r.ClassID, Visibility: r.Visibility, RuleType: r.RuleType, Status: r.Status, IsEncrypted: r.IsEncrypted, StartAt: r.StartAt, EndAt: r.EndAt}
+	return competitionsusecase.Contest{ID: r.ID, Title: r.Title, Subtitle: r.Subtitle, Description: r.Description, Announcement: r.Announcement, OwnerUserID: r.OwnerUserID, ClassID: r.ClassID, Visibility: r.Visibility, RuleType: r.RuleType, Status: r.Status, IsEncrypted: r.IsEncrypted, PasswordHash: r.PasswordHash, StartAt: r.StartAt, EndAt: r.EndAt, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}
+}
+
+func applyContestVisibilityScope(q *gorm.DB, actorUserID, actorRole string) *gorm.DB {
+	if strings.TrimSpace(actorRole) == "admin" {
+		return q
+	}
+	actorUserID = strings.TrimSpace(actorUserID)
+	if actorUserID == "" {
+		return q.Where("visibility = ?", "public")
+	}
+	return q.Where(`
+		visibility = 'public'
+		OR owner_user_id = ?
+		OR (
+			visibility = 'class'
+			AND class_id IN (
+				SELECT class_id
+				FROM class_memberships
+				WHERE user_id = ? AND status = 'active'
+			)
+		)
+	`, actorUserID, actorUserID)
 }
 
 func isDuplicate(err error) bool {

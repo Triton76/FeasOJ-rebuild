@@ -27,11 +27,17 @@ type ClassesService interface {
 type ProblemsService interface {
 	ListProblems(ctx context.Context, req ProblemsQuery) ([]ProblemDTO, error)
 	GetProblem(ctx context.Context, problemID int64) (ProblemDTO, error)
+	CreateProblem(ctx context.Context, req CreateProblemRequest) (ProblemDTO, error)
+	UpdateProblem(ctx context.Context, req UpdateProblemRequest) (ProblemDTO, error)
+	DeleteProblem(ctx context.Context, req DeleteProblemRequest) error
 }
 
 type CompetitionsService interface {
 	ListContests(ctx context.Context, req ContestsQuery) ([]ContestDTO, error)
 	GetContest(ctx context.Context, contestID int64) (ContestDTO, error)
+	CreateContest(ctx context.Context, req CreateContestRequest) (ContestDTO, error)
+	UpdateContest(ctx context.Context, req UpdateContestRequest) (ContestDTO, error)
+	DeleteContest(ctx context.Context, req DeleteContestRequest) error
 	JoinContest(ctx context.Context, req JoinContestRequest) (ContestParticipantDTO, error)
 }
 
@@ -133,10 +139,49 @@ type ClassMembershipDTO struct {
 }
 
 type ProblemsQuery struct {
-	Page       int    `form:"page"`
-	Limit      int    `form:"limit"`
-	Visibility string `form:"visibility"`
-	Status     string `form:"status"`
+	Page        int    `form:"page"`
+	Limit       int    `form:"limit"`
+	Visibility  string `form:"visibility"`
+	Status      string `form:"status"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type CreateProblemRequest struct {
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	Input         string `json:"input"`
+	Output        string `json:"output"`
+	Difficulty    int    `json:"difficulty"`
+	TimeLimitMS   int    `json:"time_limit_ms"`
+	MemoryLimitMB int    `json:"memory_limit_mb"`
+	ClassID       string `json:"class_id"`
+	Visibility    string `json:"visibility"`
+	Status        string `json:"status"`
+	ActorUserID   string `json:"-"`
+	ActorRole     string `json:"-"`
+}
+
+type UpdateProblemRequest struct {
+	ProblemID     int64  `json:"problem_id"`
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	Input         string `json:"input"`
+	Output        string `json:"output"`
+	Difficulty    int    `json:"difficulty"`
+	TimeLimitMS   int    `json:"time_limit_ms"`
+	MemoryLimitMB int    `json:"memory_limit_mb"`
+	ClassID       string `json:"class_id"`
+	Visibility    string `json:"visibility"`
+	Status        string `json:"status"`
+	ActorUserID   string `json:"-"`
+	ActorRole     string `json:"-"`
+}
+
+type DeleteProblemRequest struct {
+	ProblemID   int64  `json:"problem_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
 }
 
 type ProblemDTO struct {
@@ -155,11 +200,54 @@ type ProblemDTO struct {
 }
 
 type ContestsQuery struct {
-	Page       int    `form:"page"`
-	Limit      int    `form:"limit"`
-	Visibility string `form:"visibility"`
-	RuleType   string `form:"rule_type"`
-	Status     string `form:"status"`
+	Page        int    `form:"page"`
+	Limit       int    `form:"limit"`
+	Visibility  string `form:"visibility"`
+	RuleType    string `form:"rule_type"`
+	Status      string `form:"status"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type CreateContestRequest struct {
+	Title        string `json:"title"`
+	Subtitle     string `json:"subtitle"`
+	Description  string `json:"description"`
+	Announcement string `json:"announcement"`
+	ClassID      string `json:"class_id"`
+	Visibility   string `json:"visibility"`
+	RuleType     string `json:"rule_type"`
+	Status       string `json:"status"`
+	IsEncrypted  bool   `json:"is_encrypted"`
+	Password     string `json:"password"`
+	StartAt      string `json:"start_at"`
+	EndAt        string `json:"end_at"`
+	ActorUserID  string `json:"-"`
+	ActorRole    string `json:"-"`
+}
+
+type UpdateContestRequest struct {
+	ContestID    int64  `json:"contest_id"`
+	Title        string `json:"title"`
+	Subtitle     string `json:"subtitle"`
+	Description  string `json:"description"`
+	Announcement string `json:"announcement"`
+	ClassID      string `json:"class_id"`
+	Visibility   string `json:"visibility"`
+	RuleType     string `json:"rule_type"`
+	Status       string `json:"status"`
+	IsEncrypted  bool   `json:"is_encrypted"`
+	Password     string `json:"password"`
+	StartAt      string `json:"start_at"`
+	EndAt        string `json:"end_at"`
+	ActorUserID  string `json:"-"`
+	ActorRole    string `json:"-"`
+}
+
+type DeleteContestRequest struct {
+	ContestID   int64  `json:"contest_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
 }
 
 type ContestDTO struct {
@@ -182,6 +270,7 @@ type JoinContestRequest struct {
 	ContestID int64  `json:"contest_id"`
 	UserID    string `json:"user_id"`
 	Password  string `json:"password"`
+	ActorRole string `json:"-"`
 }
 
 type ContestParticipantDTO struct {

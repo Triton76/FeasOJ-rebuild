@@ -84,6 +84,18 @@ func (ProblemsService) GetProblem(context.Context, int64) (ports.ProblemDTO, err
 	return ports.ProblemDTO{}, ports.ErrNotImplemented
 }
 
+func (ProblemsService) CreateProblem(context.Context, ports.CreateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (ProblemsService) UpdateProblem(context.Context, ports.UpdateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (ProblemsService) DeleteProblem(context.Context, ports.DeleteProblemRequest) error {
+	return ports.ErrNotImplemented
+}
+
 type CompetitionsService struct{}
 
 func (CompetitionsService) ListContests(context.Context, ports.ContestsQuery) ([]ports.ContestDTO, error) {
@@ -92,6 +104,18 @@ func (CompetitionsService) ListContests(context.Context, ports.ContestsQuery) ([
 
 func (CompetitionsService) GetContest(context.Context, int64) (ports.ContestDTO, error) {
 	return ports.ContestDTO{}, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) CreateContest(context.Context, ports.CreateContestRequest) (ports.ContestDTO, error) {
+	return ports.ContestDTO{}, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) UpdateContest(context.Context, ports.UpdateContestRequest) (ports.ContestDTO, error) {
+	return ports.ContestDTO{}, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) DeleteContest(context.Context, ports.DeleteContestRequest) error {
+	return ports.ErrNotImplemented
 }
 
 func (CompetitionsService) JoinContest(context.Context, ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {

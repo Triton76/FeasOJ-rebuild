@@ -17,8 +17,11 @@ type Contest struct {
 	RuleType     string
 	Status       string
 	IsEncrypted  bool
+	PasswordHash string
 	StartAt      *time.Time
 	EndAt        *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type Participant struct {
@@ -32,7 +35,11 @@ type Participant struct {
 }
 
 type Repository interface {
-	List(ctx context.Context, offset, limit int, visibility, ruleType, status string) ([]Contest, error)
+	ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]Contest, error)
+	GetVisibleByID(ctx context.Context, contestID int64, actorUserID, actorRole string) (Contest, error)
 	GetByID(ctx context.Context, contestID int64) (Contest, error)
+	Create(ctx context.Context, c Contest) (Contest, error)
+	Update(ctx context.Context, c Contest) (Contest, error)
+	Delete(ctx context.Context, contestID int64) error
 	CreateParticipant(ctx context.Context, p Participant) (Participant, error)
 }

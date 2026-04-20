@@ -2,6 +2,8 @@ package competitions
 
 import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
+	"FeasOJ/app/backend-rebuild/internal/security"
+	passwordutil "FeasOJ/pkg/auth"
 	"context"
 	"errors"
 	"strings"
@@ -37,7 +39,16 @@ func (s *Service) ListContests(ctx context.Context, req ports.ContestsQuery) ([]
 	}
 
 	offset := (page - 1) * limit
-	items, err := s.repo.List(ctx, offset, limit, strings.TrimSpace(req.Visibility), strings.TrimSpace(req.RuleType), strings.TrimSpace(req.Status))
+	items, err := s.repo.ListVisible(
+		ctx,
+		offset,
+		limit,
+		strings.TrimSpace(req.Visibility),
+		strings.TrimSpace(req.RuleType),
+		strings.TrimSpace(req.Status),
+		strings.TrimSpace(req.ActorUserID),
+		strings.TrimSpace(req.ActorRole),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +67,15 @@ func (s *Service) GetContest(ctx context.Context, contestID int64) (ports.Contes
 	if contestID <= 0 {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
 	}
-	c, err := s.repo.GetByID(ctx, contestID)
+	claims, _ := security.ClaimsFromContext(ctx)
+	actorUserID := ""
+	actorRole := ""
+	if claims.UserID != "" {
+		actorUserID = claims.UserID
+		actorRole = claims.Role
+	}
+
+	c, err := s.repo.GetVisibleByID(ctx, contestID, actorUserID, actorRole)
 	if errors.Is(err, ports.ErrNotFound) {
 		return ports.ContestDTO{}, ports.ErrNotFound
 	}
@@ -66,6 +85,150 @@ func (s *Service) GetContest(ctx context.Context, contestID int64) (ports.Contes
 	return toContestDTO(c), nil
 }
 
+func (s *Service) CreateContest(ctx context.Context, req ports.CreateContestRequest) (ports.ContestDTO, error) {
+	if s.repo == nil {
+		return ports.ContestDTO{}, ports.ErrNotImplemented
+	}
+	if !canManageContest(req.ActorRole) {
+		return ports.ContestDTO{}, ports.ErrForbidden
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	visibility := normalizeContestVisibility(req.Visibility)
+	ruleType := normalizeContestRuleType(req.RuleType)
+	status := normalizeContestStatus(req.Status)
+	if visibility == "" || ruleType == "" || status == "" {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	startAt, endAt, err := parseContestTimeRange(req.StartAt, req.EndAt)
+	if err != nil {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	passwordHash, err := normalizeContestPassword(req.IsEncrypted, req.Password)
+	if err != nil {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+
+	now := time.Now().UTC()
+	created, err := s.repo.Create(ctx, Contest{
+		Title:        title,
+		Subtitle:     strings.TrimSpace(req.Subtitle),
+		Description:  strings.TrimSpace(req.Description),
+		Announcement: strings.TrimSpace(req.Announcement),
+		OwnerUserID:  strings.TrimSpace(req.ActorUserID),
+		ClassID:      strings.TrimSpace(req.ClassID),
+		Visibility:   visibility,
+		RuleType:     ruleType,
+		Status:       status,
+		IsEncrypted:  req.IsEncrypted,
+		PasswordHash: passwordHash,
+		StartAt:      startAt,
+		EndAt:        endAt,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		return ports.ContestDTO{}, err
+	}
+	return toContestDTO(created), nil
+}
+
+func (s *Service) UpdateContest(ctx context.Context, req ports.UpdateContestRequest) (ports.ContestDTO, error) {
+	if s.repo == nil {
+		return ports.ContestDTO{}, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	if !canManageContest(req.ActorRole) {
+		return ports.ContestDTO{}, ports.ErrForbidden
+	}
+
+	existing, err := s.repo.GetByID(ctx, req.ContestID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.ContestDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.ContestDTO{}, err
+	}
+	if req.ActorRole != "admin" && existing.OwnerUserID != strings.TrimSpace(req.ActorUserID) {
+		return ports.ContestDTO{}, ports.ErrForbidden
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	visibility := normalizeContestVisibility(req.Visibility)
+	ruleType := normalizeContestRuleType(req.RuleType)
+	status := normalizeContestStatus(req.Status)
+	if visibility == "" || ruleType == "" || status == "" {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	startAt, endAt, err := parseContestTimeRange(req.StartAt, req.EndAt)
+	if err != nil {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	passwordHash, err := normalizeContestPassword(req.IsEncrypted, req.Password)
+	if err != nil {
+		return ports.ContestDTO{}, ports.ErrInvalidArgument
+	}
+	if req.IsEncrypted && strings.TrimSpace(req.Password) == "" {
+		passwordHash = existing.PasswordHash
+		if strings.TrimSpace(passwordHash) == "" {
+			return ports.ContestDTO{}, ports.ErrInvalidArgument
+		}
+	}
+
+	existing.Title = title
+	existing.Subtitle = strings.TrimSpace(req.Subtitle)
+	existing.Description = strings.TrimSpace(req.Description)
+	existing.Announcement = strings.TrimSpace(req.Announcement)
+	existing.ClassID = strings.TrimSpace(req.ClassID)
+	existing.Visibility = visibility
+	existing.RuleType = ruleType
+	existing.Status = status
+	existing.IsEncrypted = req.IsEncrypted
+	existing.PasswordHash = passwordHash
+	existing.StartAt = startAt
+	existing.EndAt = endAt
+	existing.UpdatedAt = time.Now().UTC()
+
+	updated, err := s.repo.Update(ctx, existing)
+	if err != nil {
+		return ports.ContestDTO{}, err
+	}
+	return toContestDTO(updated), nil
+}
+
+func (s *Service) DeleteContest(ctx context.Context, req ports.DeleteContestRequest) error {
+	if s.repo == nil {
+		return ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 {
+		return ports.ErrInvalidArgument
+	}
+	if !canManageContest(req.ActorRole) {
+		return ports.ErrForbidden
+	}
+
+	existing, err := s.repo.GetByID(ctx, req.ContestID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if req.ActorRole != "admin" && existing.OwnerUserID != strings.TrimSpace(req.ActorUserID) {
+		return ports.ErrForbidden
+	}
+
+	return s.repo.Delete(ctx, req.ContestID)
+}
+
 func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {
 	if s.repo == nil {
 		return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
@@ -73,6 +236,21 @@ func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest)
 	if req.ContestID <= 0 || strings.TrimSpace(req.UserID) == "" {
 		return ports.ContestParticipantDTO{}, ports.ErrInvalidArgument
 	}
+
+	contest, err := s.repo.GetVisibleByID(ctx, req.ContestID, strings.TrimSpace(req.UserID), strings.TrimSpace(req.ActorRole))
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.ContestParticipantDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.ContestParticipantDTO{}, err
+	}
+
+	if contest.IsEncrypted {
+		if !passwordutil.VerifyPassword(strings.TrimSpace(req.Password), contest.PasswordHash) {
+			return ports.ContestParticipantDTO{}, ports.ErrForbidden
+		}
+	}
+
 	now := time.Now().UTC()
 	p, err := s.repo.CreateParticipant(ctx, Participant{
 		ID:        uuid.NewString(),
@@ -87,6 +265,82 @@ func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest)
 		return ports.ContestParticipantDTO{}, err
 	}
 	return ports.ContestParticipantDTO{ID: p.ID, ContestID: p.ContestID, UserID: p.UserID, Status: p.Status}, nil
+}
+
+func canManageContest(role string) bool {
+	role = strings.TrimSpace(role)
+	return role == "teacher" || role == "admin"
+}
+
+func normalizeContestVisibility(value string) string {
+	value = strings.TrimSpace(value)
+	switch value {
+	case "public", "class", "private":
+		return value
+	default:
+		return ""
+	}
+}
+
+func normalizeContestRuleType(value string) string {
+	value = strings.TrimSpace(value)
+	switch value {
+	case "acm", "oi", "assignment":
+		return value
+	default:
+		return ""
+	}
+}
+
+func normalizeContestStatus(value string) string {
+	value = strings.TrimSpace(value)
+	switch value {
+	case "draft", "scheduled", "running", "ended":
+		return value
+	default:
+		return ""
+	}
+}
+
+func normalizeContestPassword(isEncrypted bool, plain string) (string, error) {
+	if !isEncrypted {
+		return "", nil
+	}
+	plain = strings.TrimSpace(plain)
+	if plain == "" {
+		return "", nil
+	}
+	hash := passwordutil.EncryptPassword(plain)
+	if hash == "" {
+		return "", errors.New("hash password failed")
+	}
+	return hash, nil
+}
+
+func parseContestTimeRange(startAtText, endAtText string) (*time.Time, *time.Time, error) {
+	startAtText = strings.TrimSpace(startAtText)
+	endAtText = strings.TrimSpace(endAtText)
+	if startAtText == "" && endAtText == "" {
+		return nil, nil, nil
+	}
+	if startAtText == "" || endAtText == "" {
+		return nil, nil, errors.New("invalid time range")
+	}
+
+	startAt, err := time.Parse(time.RFC3339, startAtText)
+	if err != nil {
+		return nil, nil, err
+	}
+	endAt, err := time.Parse(time.RFC3339, endAtText)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !startAt.Before(endAt) {
+		return nil, nil, errors.New("start_at must be before end_at")
+	}
+	startAt = startAt.UTC()
+	endAt = endAt.UTC()
+	return &startAt, &endAt, nil
 }
 
 func toContestDTO(c Contest) ports.ContestDTO {

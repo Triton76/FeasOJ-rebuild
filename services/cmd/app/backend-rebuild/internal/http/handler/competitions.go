@@ -17,6 +17,8 @@ func (h Handlers) ListContests(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req.ActorUserID = c.GetString("auth_user_id")
+	req.ActorRole = c.GetString("auth_role")
 
 	resp, err := h.Competitions.ListContests(c.Request.Context(), req)
 	if err != nil {
@@ -41,6 +43,66 @@ func (h Handlers) GetContest(c *gin.Context) {
 	ok(c, resp)
 }
 
+func (h Handlers) CreateContest(c *gin.Context) {
+	var req ports.CreateContestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.ActorUserID = c.GetString("auth_user_id")
+	req.ActorRole = c.GetString("auth_role")
+
+	resp, err := h.Competitions.CreateContest(c.Request.Context(), req)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) UpdateContest(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	var req ports.UpdateContestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.ContestID = contestID
+	req.ActorUserID = c.GetString("auth_user_id")
+	req.ActorRole = c.GetString("auth_role")
+
+	resp, svcErr := h.Competitions.UpdateContest(c.Request.Context(), req)
+	if svcErr != nil {
+		fail(c, svcErr)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) DeleteContest(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	req := ports.DeleteContestRequest{
+		ContestID:   contestID,
+		ActorUserID: c.GetString("auth_user_id"),
+		ActorRole:   c.GetString("auth_role"),
+	}
+	if err := h.Competitions.DeleteContest(c.Request.Context(), req); err != nil {
+		fail(c, err)
+		return
+	}
+	noContent(c)
+}
+
 func (h Handlers) JoinContest(c *gin.Context) {
 	var req ports.JoinContestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -55,6 +117,7 @@ func (h Handlers) JoinContest(c *gin.Context) {
 	}
 
 	req.UserID = userID
+	req.ActorRole = c.GetString("auth_role")
 	resp, err := h.Competitions.JoinContest(c.Request.Context(), req)
 	if err != nil {
 		fail(c, err)
