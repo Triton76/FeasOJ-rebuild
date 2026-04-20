@@ -52,6 +52,18 @@ func (r *Repository) CreateClass(ctx context.Context, c classesusecase.Class) (c
 	return toClass(row), nil
 }
 
+func (r *Repository) FindClassByID(ctx context.Context, classID string) (classesusecase.Class, error) {
+	var row classRow
+	err := r.db.WithContext(ctx).Where("id = ?", classID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return classesusecase.Class{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return classesusecase.Class{}, err
+	}
+	return toClass(row), nil
+}
+
 func (r *Repository) CreateMembership(ctx context.Context, m classesusecase.Membership) (classesusecase.Membership, error) {
 	row := membershipRow{ID: m.ID, ClassID: m.ClassID, UserID: m.UserID, RoleInClass: m.RoleInClass, Status: m.Status, JoinedAt: m.JoinedAt, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
@@ -75,6 +87,40 @@ func (r *Repository) FindClassByCode(ctx context.Context, code string) (classesu
 	return toClass(row), nil
 }
 
+func (r *Repository) UpdateClass(ctx context.Context, classID, ownerUserID, name, description string, updatedAt time.Time) (bool, error) {
+	updates := map[string]any{
+		"name":        name,
+		"description": description,
+		"updated_at":  updatedAt,
+	}
+	result := r.db.WithContext(ctx).
+		Model(&classRow{}).
+		Where("id = ? AND owner_user_id = ? AND status <> ?", classID, ownerUserID, "archived").
+		Updates(updates)
+	if result.Error != nil {
+		if isDuplicate(result.Error) {
+			return false, ports.ErrConflict
+		}
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (r *Repository) ArchiveClass(ctx context.Context, classID, ownerUserID string, updatedAt time.Time) (bool, error) {
+	updates := map[string]any{
+		"status":     "archived",
+		"updated_at": updatedAt,
+	}
+	result := r.db.WithContext(ctx).
+		Model(&classRow{}).
+		Where("id = ? AND owner_user_id = ? AND status <> ?", classID, ownerUserID, "archived").
+		Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
 func (r *Repository) FindMembershipByID(ctx context.Context, membershipID string) (classesusecase.Membership, error) {
 	var row membershipRow
 	err := r.db.WithContext(ctx).Where("id = ?", membershipID).Take(&row).Error
@@ -85,6 +131,42 @@ func (r *Repository) FindMembershipByID(ctx context.Context, membershipID string
 		return classesusecase.Membership{}, err
 	}
 	return toMembership(row), nil
+}
+
+func (r *Repository) FindMembershipByClassAndUser(ctx context.Context, classID, userID string) (classesusecase.Membership, error) {
+	var row membershipRow
+	err := r.db.WithContext(ctx).Where("class_id = ? AND user_id = ?", classID, userID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return classesusecase.Membership{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return classesusecase.Membership{}, err
+	}
+	return toMembership(row), nil
+}
+
+func (r *Repository) ListMembershipsByClassID(ctx context.Context, classID string) ([]classesusecase.Membership, error) {
+	var rows []membershipRow
+	if err := r.db.WithContext(ctx).Where("class_id = ?", classID).Order("created_at ASC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]classesusecase.Membership, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toMembership(row))
+	}
+	return items, nil
+}
+
+func (r *Repository) ListMembershipsByUserID(ctx context.Context, userID string) ([]classesusecase.Membership, error) {
+	var rows []membershipRow
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at ASC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]classesusecase.Membership, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toMembership(row))
+	}
+	return items, nil
 }
 
 func (r *Repository) UpdateMembershipStatus(ctx context.Context, membershipID, status string, joinedAt *time.Time, updatedAt time.Time) (bool, error) {

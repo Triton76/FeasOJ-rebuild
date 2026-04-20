@@ -64,8 +64,22 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			discussionsRepository := discussionsrepo.NewRepository(db)
 			submitRecordsRepository := submitrecordsrepo.NewRepository(db)
 
-			// 初始化提交队列（内存实现）
 			submissionQueue := queue.NewMemorySubmissionQueue()
+			if cfg.EnableRabbitMQQueue && cfg.RabbitMQURL != "" {
+				if rabbitQueue, err := queue.NewRabbitMQSubmissionQueue(queue.RabbitMQConfig{
+					URL:        cfg.RabbitMQURL,
+					Exchange:   cfg.RabbitMQExchange,
+					MainQueue:  cfg.RabbitMQMainQueue,
+					RetryQueue: cfg.RabbitMQRetryQueue,
+					DLQ:        cfg.RabbitMQDLQ,
+					Prefetch:   cfg.RabbitMQWorkerPrefetch,
+				}); err != nil {
+					log.Printf("[backend-rebuild] rabbitmq init failed, fallback to memory queue: %v", err)
+				} else {
+					submissionQueue = rabbitQueue
+					log.Println("[backend-rebuild] rabbitmq submission queue enabled")
+				}
+			}
 
 			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL)
 			services.Users = usersusecase.NewService(usersRepository)
@@ -75,7 +89,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			services.Competitions = competitionsusecase.NewService(competitionsRepository)
 			services.Discussions = discussionsusecase.NewService(discussionsRepository)
 			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository, submissionQueue)
-			if cfg.EnableJudgeWriteback {
+			if cfg.EnableEmbeddedJudgeWorker && cfg.EnableJudgeWriteback {
 				queue.NewJudgeWorker(submissionQueue, services.SubmitRecords, 300*time.Millisecond).Start(schedulerCtx)
 			}
 			scheduler.StartContestStatusReconciler(schedulerCtx, db, time.Duration(cfg.ContestStatusScanSeconds)*time.Second)

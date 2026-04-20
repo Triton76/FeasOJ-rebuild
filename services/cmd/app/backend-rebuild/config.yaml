@@ -15,3 +15,14 @@ scheduler:
 feature_flags:
   enable_judge_writeback: true
   enable_scoreboard: true
+  enable_rabbitmq_queue: false
+  enable_embedded_judge_worker: true
+  enable_class_workflow_v2: true
+
+rabbitmq:
+  url: amqp://guest:guest@localhost:5672/
+  exchange: judge.submission.exchange
+  main_queue: judge.submission.main
+  retry_queue: judge.submission.retry
+  dlq: judge.submission.dlq
+  worker_prefetch: 1

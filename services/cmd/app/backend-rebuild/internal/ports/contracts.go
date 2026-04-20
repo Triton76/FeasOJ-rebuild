@@ -20,8 +20,12 @@ type UsersService interface {
 
 type ClassesService interface {
 	CreateClass(ctx context.Context, req CreateClassRequest) (ClassDTO, error)
+	UpdateClass(ctx context.Context, req UpdateClassRequest) (ClassDTO, error)
+	ArchiveClass(ctx context.Context, classID string, actorUserID string) error
 	ApplyJoinClass(ctx context.Context, req ApplyJoinClassRequest) (ClassMembershipDTO, error)
 	ReviewMembership(ctx context.Context, req ReviewMembershipRequest) (ClassMembershipDTO, error)
+	ListClassMemberships(ctx context.Context, classID string, actorUserID string) ([]ClassMembershipDTO, error)
+	ListMyMemberships(ctx context.Context, userID string) ([]ClassMembershipDTO, error)
 }
 
 type ProblemsService interface {
@@ -114,6 +118,13 @@ type CreateClassRequest struct {
 	OwnerUserID string `json:"owner_user_id"`
 }
 
+type UpdateClassRequest struct {
+	ClassID     string `json:"class_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ActorUserID string `json:"-"`
+}
+
 type ApplyJoinClassRequest struct {
 	ClassCode string `json:"class_code"`
 	UserID    string `json:"user_id"`
@@ -122,6 +133,7 @@ type ApplyJoinClassRequest struct {
 type ReviewMembershipRequest struct {
 	MembershipID string `json:"membership_id"`
 	Approve      bool   `json:"approve"`
+	ActorUserID  string `json:"-"`
 }
 
 type ClassDTO struct {
@@ -276,15 +288,16 @@ type JoinContestRequest struct {
 	ActorRole string `json:"-"`
 }
 
-type ContestParticipantDTO struct {
-	ID        string `json:"id"`
-	ContestID int64  `json:"contest_id"`
-	UserID    string `json:"user_id"`
-	Status    string `json:"status"`
-}
-
 type ContestScoreboardQuery struct {
 	ContestID int64 `json:"contest_id"`
+}
+
+type ContestScoreboardResponse struct {
+	ContestID     int64                   `json:"contest_id"`
+	FreezeActive  bool                    `json:"freeze_active"`
+	FreezeStartAt string                  `json:"freeze_start_at"`
+	GeneratedAt   string                  `json:"generated_at"`
+	VisibleItems  []ContestScoreboardItem `json:"visible_items"`
 }
 
 type ContestScoreboardItem struct {
@@ -296,12 +309,11 @@ type ContestScoreboardItem struct {
 	ReachedAt      string `json:"reached_at"`
 }
 
-type ContestScoreboardResponse struct {
-	ContestID      int64                 `json:"contest_id"`
-	FreezeActive   bool                  `json:"freeze_active"`
-	FreezeStartAt  string                `json:"freeze_start_at"`
-	GeneratedAt    string                `json:"generated_at"`
-	VisibleItems   []ContestScoreboardItem `json:"items"`
+type ContestParticipantDTO struct {
+	ID        string `json:"id"`
+	ContestID int64  `json:"contest_id"`
+	UserID    string `json:"user_id"`
+	Status    string `json:"status"`
 }
 
 type DiscussionsQuery struct {
@@ -350,19 +362,19 @@ type CreateSubmissionRequest struct {
 	UserID     string `json:"user_id"`
 }
 
+type JudgeWritebackRequest struct {
+	SubmissionID int64  `json:"submission_id"`
+	Result       string `json:"result"`
+	Score        *int   `json:"score"`
+	Source       string `json:"source"`
+}
+
 type SubmissionsQuery struct {
 	UserID    string `form:"user_id"`
 	ProblemID int64  `form:"problem_id"`
 	ContestID int64  `form:"contest_id"`
 	Page      int    `form:"page"`
 	Limit     int    `form:"limit"`
-}
-
-type JudgeWritebackRequest struct {
-	SubmissionID int64  `json:"submission_id"`
-	Result       string `json:"result"`
-	Score        *int   `json:"score,omitempty"`
-	Source       string `json:"source"`
 }
 
 type SubmissionDTO struct {

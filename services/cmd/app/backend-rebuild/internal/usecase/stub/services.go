@@ -66,12 +66,28 @@ func (ClassesService) CreateClass(context.Context, ports.CreateClassRequest) (po
 	return ports.ClassDTO{}, ports.ErrNotImplemented
 }
 
+func (ClassesService) UpdateClass(context.Context, ports.UpdateClassRequest) (ports.ClassDTO, error) {
+	return ports.ClassDTO{}, ports.ErrNotImplemented
+}
+
+func (ClassesService) ArchiveClass(context.Context, string, string) error {
+	return ports.ErrNotImplemented
+}
+
 func (ClassesService) ApplyJoinClass(context.Context, ports.ApplyJoinClassRequest) (ports.ClassMembershipDTO, error) {
 	return ports.ClassMembershipDTO{}, ports.ErrNotImplemented
 }
 
 func (ClassesService) ReviewMembership(context.Context, ports.ReviewMembershipRequest) (ports.ClassMembershipDTO, error) {
 	return ports.ClassMembershipDTO{}, ports.ErrNotImplemented
+}
+
+func (ClassesService) ListClassMemberships(context.Context, string, string) ([]ports.ClassMembershipDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (ClassesService) ListMyMemberships(context.Context, string) ([]ports.ClassMembershipDTO, error) {
+	return nil, ports.ErrNotImplemented
 }
 
 type ProblemsService struct{}

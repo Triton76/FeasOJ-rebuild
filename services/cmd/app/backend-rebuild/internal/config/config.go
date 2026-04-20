@@ -18,14 +18,23 @@ const defaultContestStatusScanSeconds = 30
 const defaultConfigPath = "app/backend-rebuild/config.yaml"
 
 type Config struct {
-	Addr                     string
-	MySQLDSN                 string
-	JWTSecret                string
-	JWTIssuer                string
-	JWTExpireH               string
-	ContestStatusScanSeconds int
-	EnableJudgeWriteback     bool
-	EnableScoreboard         bool
+	Addr                      string
+	MySQLDSN                  string
+	JWTSecret                 string
+	JWTIssuer                 string
+	JWTExpireH                string
+	ContestStatusScanSeconds  int
+	EnableJudgeWriteback      bool
+	EnableScoreboard          bool
+	EnableRabbitMQQueue       bool
+	EnableEmbeddedJudgeWorker bool
+	EnableClassWorkflowV2     bool
+	RabbitMQURL               string
+	RabbitMQExchange          string
+	RabbitMQMainQueue         string
+	RabbitMQRetryQueue        string
+	RabbitMQDLQ               string
+	RabbitMQWorkerPrefetch    int
 }
 
 type fileConfig struct {
@@ -44,19 +53,38 @@ type fileConfig struct {
 		ContestStatusScanSeconds int `yaml:"contest_status_scan_seconds"`
 	} `yaml:"scheduler"`
 	FeatureFlags struct {
-		EnableJudgeWriteback *bool `yaml:"enable_judge_writeback"`
-		EnableScoreboard     *bool `yaml:"enable_scoreboard"`
+		EnableJudgeWriteback      *bool `yaml:"enable_judge_writeback"`
+		EnableScoreboard          *bool `yaml:"enable_scoreboard"`
+		EnableRabbitMQQueue       *bool `yaml:"enable_rabbitmq_queue"`
+		EnableEmbeddedJudgeWorker *bool `yaml:"enable_embedded_judge_worker"`
+		EnableClassWorkflowV2     *bool `yaml:"enable_class_workflow_v2"`
 	} `yaml:"feature_flags"`
+	RabbitMQ struct {
+		URL        string `yaml:"url"`
+		Exchange   string `yaml:"exchange"`
+		MainQueue  string `yaml:"main_queue"`
+		RetryQueue string `yaml:"retry_queue"`
+		DLQ        string `yaml:"dlq"`
+		Prefetch   int    `yaml:"worker_prefetch"`
+	} `yaml:"rabbitmq"`
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Addr:                     defaultAddr,
-		JWTIssuer:                defaultJWTIssuer,
-		JWTExpireH:               defaultJWTExpireHours,
-		ContestStatusScanSeconds: defaultContestStatusScanSeconds,
-		EnableJudgeWriteback:     true,
-		EnableScoreboard:         true,
+		Addr:                      defaultAddr,
+		JWTIssuer:                 defaultJWTIssuer,
+		JWTExpireH:                defaultJWTExpireHours,
+		ContestStatusScanSeconds:  defaultContestStatusScanSeconds,
+		EnableJudgeWriteback:      true,
+		EnableScoreboard:          true,
+		EnableRabbitMQQueue:       false,
+		EnableEmbeddedJudgeWorker: true,
+		EnableClassWorkflowV2:     true,
+		RabbitMQExchange:          "judge.submission.exchange",
+		RabbitMQMainQueue:         "judge.submission.main",
+		RabbitMQRetryQueue:        "judge.submission.retry",
+		RabbitMQDLQ:               "judge.submission.dlq",
+		RabbitMQWorkerPrefetch:    1,
 	}
 
 	if err := loadFromYAML(&cfg); err != nil {
@@ -110,6 +138,33 @@ func loadFromYAML(cfg *Config) error {
 	if fc.FeatureFlags.EnableScoreboard != nil {
 		cfg.EnableScoreboard = *fc.FeatureFlags.EnableScoreboard
 	}
+	if fc.FeatureFlags.EnableRabbitMQQueue != nil {
+		cfg.EnableRabbitMQQueue = *fc.FeatureFlags.EnableRabbitMQQueue
+	}
+	if fc.FeatureFlags.EnableEmbeddedJudgeWorker != nil {
+		cfg.EnableEmbeddedJudgeWorker = *fc.FeatureFlags.EnableEmbeddedJudgeWorker
+	}
+	if fc.FeatureFlags.EnableClassWorkflowV2 != nil {
+		cfg.EnableClassWorkflowV2 = *fc.FeatureFlags.EnableClassWorkflowV2
+	}
+	if fc.RabbitMQ.URL != "" {
+		cfg.RabbitMQURL = fc.RabbitMQ.URL
+	}
+	if fc.RabbitMQ.Exchange != "" {
+		cfg.RabbitMQExchange = fc.RabbitMQ.Exchange
+	}
+	if fc.RabbitMQ.MainQueue != "" {
+		cfg.RabbitMQMainQueue = fc.RabbitMQ.MainQueue
+	}
+	if fc.RabbitMQ.RetryQueue != "" {
+		cfg.RabbitMQRetryQueue = fc.RabbitMQ.RetryQueue
+	}
+	if fc.RabbitMQ.DLQ != "" {
+		cfg.RabbitMQDLQ = fc.RabbitMQ.DLQ
+	}
+	if fc.RabbitMQ.Prefetch > 0 {
+		cfg.RabbitMQWorkerPrefetch = fc.RabbitMQ.Prefetch
+	}
 
 	return nil
 }
@@ -141,6 +196,35 @@ func loadFromEnv(cfg *Config) {
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_SCOREBOARD"); v != "" {
 		cfg.EnableScoreboard = v == "1" || v == "true" || v == "TRUE"
 	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_RABBITMQ_QUEUE"); v != "" {
+		cfg.EnableRabbitMQQueue = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_EMBEDDED_JUDGE_WORKER"); v != "" {
+		cfg.EnableEmbeddedJudgeWorker = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_CLASS_WORKFLOW_V2"); v != "" {
+		cfg.EnableClassWorkflowV2 = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_URL"); v != "" {
+		cfg.RabbitMQURL = v
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_EXCHANGE"); v != "" {
+		cfg.RabbitMQExchange = v
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_MAIN_QUEUE"); v != "" {
+		cfg.RabbitMQMainQueue = v
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_RETRY_QUEUE"); v != "" {
+		cfg.RabbitMQRetryQueue = v
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_DLQ"); v != "" {
+		cfg.RabbitMQDLQ = v
+	}
+	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_WORKER_PREFETCH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.RabbitMQWorkerPrefetch = n
+		}
+	}
 
 	if cfg.JWTIssuer == "" {
 		cfg.JWTIssuer = defaultJWTIssuer
@@ -150,5 +234,20 @@ func loadFromEnv(cfg *Config) {
 	}
 	if cfg.ContestStatusScanSeconds <= 0 {
 		cfg.ContestStatusScanSeconds = defaultContestStatusScanSeconds
+	}
+	if cfg.RabbitMQExchange == "" {
+		cfg.RabbitMQExchange = "judge.submission.exchange"
+	}
+	if cfg.RabbitMQMainQueue == "" {
+		cfg.RabbitMQMainQueue = "judge.submission.main"
+	}
+	if cfg.RabbitMQRetryQueue == "" {
+		cfg.RabbitMQRetryQueue = "judge.submission.retry"
+	}
+	if cfg.RabbitMQDLQ == "" {
+		cfg.RabbitMQDLQ = "judge.submission.dlq"
+	}
+	if cfg.RabbitMQWorkerPrefetch <= 0 {
+		cfg.RabbitMQWorkerPrefetch = 1
 	}
 }

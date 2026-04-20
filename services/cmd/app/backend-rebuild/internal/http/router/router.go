@@ -30,8 +30,12 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/ranking", h.ListRanking)
 
 	authed.POST("/classes", h.CreateClass)
+	authed.PATCH("/classes/:class_id", h.UpdateClass)
+	authed.POST("/classes/:class_id/archive", h.ArchiveClass)
 	authed.POST("/classes/join", h.ApplyJoinClass)
 	authed.POST("/classes/memberships/review", h.ReviewMembership)
+	authed.GET("/classes/:class_id/memberships", h.ListClassMemberships)
+	authed.GET("/classes/memberships/self", h.ListMyMemberships)
 
 	authed.GET("/problems", h.ListProblems)
 	authed.POST("/problems", h.CreateProblem)
