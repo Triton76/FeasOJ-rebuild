@@ -231,3 +231,107 @@ func TestClassWorkflowApplyReviewAndArchive(t *testing.T) {
 		t.Fatalf("expected archived class apply conflict, got %v", err)
 	}
 }
+
+func TestClassWorkflowAssistantCanReview(t *testing.T) {
+	repo := newFakeClassRepo()
+	svc := NewService(repo)
+
+	created, err := svc.CreateClass(context.Background(), ports.CreateClassRequest{
+		Name:        "Chem",
+		Code:        "CHEM101",
+		Description: "basic",
+		OwnerUserID: "teacher-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateClass failed: %v", err)
+	}
+	now := time.Now().UTC()
+	if _, err := repo.CreateMembership(context.Background(), Membership{
+		ID:          "assistant-m-1",
+		ClassID:     created.ID,
+		UserID:      "assistant-1",
+		RoleInClass: "assistant",
+		Status:      "active",
+		JoinedAt:    &now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}); err != nil {
+		t.Fatalf("seed assistant membership failed: %v", err)
+	}
+	joined, err := svc.ApplyJoinClass(context.Background(), ports.ApplyJoinClassRequest{ClassCode: created.Code, UserID: "student-1"})
+	if err != nil {
+		t.Fatalf("ApplyJoinClass failed: %v", err)
+	}
+	if _, err := svc.ReviewMembership(context.Background(), ports.ReviewMembershipRequest{MembershipID: joined.ID, Approve: true, ActorUserID: "assistant-1"}); err != nil {
+		t.Fatalf("assistant review should pass, got %v", err)
+	}
+}
+
+func TestClassWorkflowStudentCannotReview(t *testing.T) {
+	repo := newFakeClassRepo()
+	svc := NewService(repo)
+
+	created, err := svc.CreateClass(context.Background(), ports.CreateClassRequest{
+		Name:        "Bio",
+		Code:        "BIO101",
+		Description: "basic",
+		OwnerUserID: "teacher-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateClass failed: %v", err)
+	}
+	joined, err := svc.ApplyJoinClass(context.Background(), ports.ApplyJoinClassRequest{ClassCode: created.Code, UserID: "student-1"})
+	if err != nil {
+		t.Fatalf("ApplyJoinClass failed: %v", err)
+	}
+	if _, err := svc.ReviewMembership(context.Background(), ports.ReviewMembershipRequest{MembershipID: joined.ID, Approve: true, ActorUserID: "student-2"}); !errors.Is(err, ports.ErrForbidden) {
+		t.Fatalf("expected forbidden for student reviewer, got %v", err)
+	}
+}
+
+func TestClassWorkflowConcurrentReviewConflict(t *testing.T) {
+	repo := newFakeClassRepo()
+	svc := NewService(repo)
+
+	created, err := svc.CreateClass(context.Background(), ports.CreateClassRequest{
+		Name:        "Geo",
+		Code:        "GEO101",
+		Description: "basic",
+		OwnerUserID: "teacher-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateClass failed: %v", err)
+	}
+	joined, err := svc.ApplyJoinClass(context.Background(), ports.ApplyJoinClassRequest{ClassCode: created.Code, UserID: "student-1"})
+	if err != nil {
+		t.Fatalf("ApplyJoinClass failed: %v", err)
+	}
+
+	errCh := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, e := svc.ReviewMembership(context.Background(), ports.ReviewMembershipRequest{MembershipID: joined.ID, Approve: true, ActorUserID: "teacher-1"})
+			errCh <- e
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+
+	success := 0
+	conflict := 0
+	for e := range errCh {
+		if e == nil {
+			success++
+			continue
+		}
+		if errors.Is(e, ports.ErrConflict) {
+			conflict++
+		}
+	}
+	if success != 1 || conflict != 1 {
+		t.Fatalf("expected 1 success + 1 conflict, got success=%d conflict=%d", success, conflict)
+	}
+}

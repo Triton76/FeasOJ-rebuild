@@ -49,6 +49,8 @@ func fail(c *gin.Context, err error) {
 		status = http.StatusNotFound
 	case errors.Is(err, ports.ErrConflict):
 		status = http.StatusConflict
+	case errors.Is(err, ports.ErrRateLimited):
+		status = http.StatusTooManyRequests
 	}
 	c.JSON(status, gin.H{"error": err.Error()})
 }

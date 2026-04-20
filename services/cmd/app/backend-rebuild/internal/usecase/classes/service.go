@@ -208,7 +208,7 @@ func (s *Service) ReviewMembership(ctx context.Context, req ports.ReviewMembersh
 		return ports.ClassMembershipDTO{}, err
 	}
 	if !affected {
-		return ports.ClassMembershipDTO{}, ports.ErrNotFound
+		return ports.ClassMembershipDTO{}, ports.ErrConflict
 	}
 
 	m, err := s.repo.FindMembershipByID(ctx, membershipID)
@@ -289,7 +289,10 @@ func (s *Service) canManageClass(ctx context.Context, classID, actorUserID strin
 	if err != nil {
 		return false, err
 	}
-	return membership.Status == "active" && membership.RoleInClass == "teacher", nil
+	if membership.Status != "active" {
+		return false, nil
+	}
+	return membership.RoleInClass == "teacher" || membership.RoleInClass == "assistant", nil
 }
 
 func toMembershipDTO(m Membership) ports.ClassMembershipDTO {

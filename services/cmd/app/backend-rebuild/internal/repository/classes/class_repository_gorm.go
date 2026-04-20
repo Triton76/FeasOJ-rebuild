@@ -171,7 +171,7 @@ func (r *Repository) ListMembershipsByUserID(ctx context.Context, userID string)
 
 func (r *Repository) UpdateMembershipStatus(ctx context.Context, membershipID, status string, joinedAt *time.Time, updatedAt time.Time) (bool, error) {
 	updates := map[string]any{"status": status, "updated_at": updatedAt, "joined_at": joinedAt}
-	result := r.db.WithContext(ctx).Model(&membershipRow{}).Where("id = ?", membershipID).Updates(updates)
+	result := r.db.WithContext(ctx).Model(&membershipRow{}).Where("id = ? AND status = ?", membershipID, "pending").Updates(updates)
 	if result.Error != nil {
 		return false, result.Error
 	}
