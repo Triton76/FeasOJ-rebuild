@@ -110,6 +110,9 @@ func (s *Service) CreateContest(ctx context.Context, req ports.CreateContestRequ
 	if visibility == "" || ruleType == "" || status == "" {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
 	}
+	if requiresBoundProblems(status, visibility) {
+		return ports.ContestDTO{}, ports.ErrConflict
+	}
 	startAt, endAt, err := parseContestTimeRange(req.StartAt, req.EndAt)
 	if err != nil {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
@@ -175,6 +178,15 @@ func (s *Service) UpdateContest(ctx context.Context, req ports.UpdateContestRequ
 	if visibility == "" || ruleType == "" || status == "" {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
 	}
+	if requiresBoundProblems(status, visibility) {
+		boundCount, countErr := s.repo.CountProblemBindings(ctx, existing.ID)
+		if countErr != nil {
+			return ports.ContestDTO{}, countErr
+		}
+		if boundCount == 0 {
+			return ports.ContestDTO{}, ports.ErrConflict
+		}
+	}
 	startAt, endAt, err := parseContestTimeRange(req.StartAt, req.EndAt)
 	if err != nil {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
@@ -234,6 +246,99 @@ func (s *Service) DeleteContest(ctx context.Context, req ports.DeleteContestRequ
 	}
 
 	return s.repo.Delete(ctx, req.ContestID)
+}
+
+func (s *Service) ListContestProblems(ctx context.Context, req ports.ContestProblemsQuery) ([]ports.ContestProblemBindingDTO, error) {
+	if s.repo == nil {
+		return nil, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 {
+		return nil, ports.ErrInvalidArgument
+	}
+
+	contest, err := s.repo.GetByID(ctx, req.ContestID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return nil, ports.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.ActorRole) != "admin" && contest.OwnerUserID != strings.TrimSpace(req.ActorUserID) {
+		return nil, ports.ErrForbidden
+	}
+
+	items, err := s.repo.ListProblemBindings(ctx, req.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]ports.ContestProblemBindingDTO, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, ports.ContestProblemBindingDTO{
+			ContestID:    item.ContestID,
+			ProblemID:    item.ProblemID,
+			DisplayOrder: item.DisplayOrder,
+			Alias:        item.Alias,
+		})
+	}
+	return resp, nil
+}
+
+func (s *Service) ReplaceContestProblems(ctx context.Context, req ports.ReplaceContestProblemsRequest) ([]ports.ContestProblemBindingDTO, error) {
+	if s.repo == nil {
+		return nil, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 {
+		return nil, ports.ErrInvalidArgument
+	}
+
+	contest, err := s.repo.GetByID(ctx, req.ContestID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return nil, ports.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.ActorRole) != "admin" && contest.OwnerUserID != strings.TrimSpace(req.ActorUserID) {
+		return nil, ports.ErrForbidden
+	}
+
+	bindings, err := normalizeContestProblemBindings(req.ContestID, req.Items)
+	if err != nil {
+		return nil, err
+	}
+
+	problemIDs := make([]int64, 0, len(bindings))
+	for _, item := range bindings {
+		problemIDs = append(problemIDs, item.ProblemID)
+	}
+	if len(problemIDs) > 0 {
+		count, countErr := s.repo.CountExistingProblems(ctx, problemIDs)
+		if countErr != nil {
+			return nil, countErr
+		}
+		if count != int64(len(problemIDs)) {
+			return nil, ports.ErrNotFound
+		}
+	}
+
+	if err := s.repo.ReplaceProblemBindings(ctx, req.ContestID, bindings); err != nil {
+		return nil, err
+	}
+	stored, err := s.repo.ListProblemBindings(ctx, req.ContestID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]ports.ContestProblemBindingDTO, 0, len(stored))
+	for _, item := range stored {
+		resp = append(resp, ports.ContestProblemBindingDTO{
+			ContestID:    item.ContestID,
+			ProblemID:    item.ProblemID,
+			DisplayOrder: item.DisplayOrder,
+			Alias:        item.Alias,
+		})
+	}
+	return resp, nil
 }
 
 func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {
@@ -321,10 +426,10 @@ func (s *Service) GetScoreboard(ctx context.Context, req ports.ContestScoreboard
 
 	items := buildScoreboardItemsByRuleType(submissions, contest.StartAt, contest.RuleType)
 	observability.LogJSON("scoreboard.query", map[string]any{
-		"contest_id": req.ContestID,
-		"rule_type": strings.TrimSpace(contest.RuleType),
+		"contest_id":    req.ContestID,
+		"rule_type":     strings.TrimSpace(contest.RuleType),
 		"freeze_active": freezeActive,
-		"items": len(items),
+		"items":         len(items),
 	})
 	success = true
 
@@ -588,6 +693,50 @@ func normalizeContestStatus(value string) string {
 	default:
 		return ""
 	}
+}
+
+func requiresBoundProblems(status, visibility string) bool {
+	return status != "draft" && visibility != "private"
+}
+
+func normalizeContestProblemBindings(contestID int64, items []ports.ContestProblemBindingUpsert) ([]ContestProblemBinding, error) {
+	now := time.Now().UTC()
+	problemSet := make(map[int64]struct{}, len(items))
+	orderSet := make(map[int]struct{}, len(items))
+	aliasSet := make(map[string]struct{}, len(items))
+	resp := make([]ContestProblemBinding, 0, len(items))
+
+	for _, item := range items {
+		if item.ProblemID <= 0 || item.DisplayOrder <= 0 {
+			return nil, ports.ErrInvalidArgument
+		}
+		if _, ok := problemSet[item.ProblemID]; ok {
+			return nil, ports.ErrConflict
+		}
+		if _, ok := orderSet[item.DisplayOrder]; ok {
+			return nil, ports.ErrConflict
+		}
+		alias := strings.TrimSpace(item.Alias)
+		if alias != "" {
+			if _, ok := aliasSet[alias]; ok {
+				return nil, ports.ErrConflict
+			}
+			aliasSet[alias] = struct{}{}
+		}
+
+		problemSet[item.ProblemID] = struct{}{}
+		orderSet[item.DisplayOrder] = struct{}{}
+		resp = append(resp, ContestProblemBinding{
+			ContestID:    contestID,
+			ProblemID:    item.ProblemID,
+			DisplayOrder: item.DisplayOrder,
+			Alias:        alias,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		})
+	}
+
+	return resp, nil
 }
 
 func normalizeContestPassword(isEncrypted bool, plain string) (string, error) {

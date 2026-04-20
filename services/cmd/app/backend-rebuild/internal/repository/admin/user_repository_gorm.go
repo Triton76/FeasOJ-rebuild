@@ -58,6 +58,14 @@ func (r *UserRepository) UpdateUserStatus(ctx context.Context, userID, status st
 	return result.RowsAffected > 0, nil
 }
 
+func (r *UserRepository) UpdateUserRole(ctx context.Context, userID, role string) (bool, error) {
+	result := r.db.WithContext(ctx).Model(&userRow{}).Where("id = ?", userID).Update("role", role)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
 func (r *UserRepository) GetByID(ctx context.Context, userID string) (adminusecase.User, error) {
 	var row userRow
 	err := r.db.WithContext(ctx).Where("id = ?", userID).Take(&row).Error

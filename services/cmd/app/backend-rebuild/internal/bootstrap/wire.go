@@ -84,7 +84,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 				}
 			}
 
-			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL)
+			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL, cfg.EnablePasswordReset)
 			services.Users = usersusecase.NewService(usersRepository)
 			services.Problems = problemsusecase.NewService(problemsRepository)
 			services.Admin = adminusecase.NewService(adminRepository)
@@ -102,15 +102,15 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 	}
 
 	h := handler.New(handler.Handlers{
-		Auth:          services.Auth,
-		Users:         services.Users,
-		Classes:       services.Classes,
-		Problems:      services.Problems,
-		Testcases:     services.Testcases,
-		Competitions:  services.Competitions,
-		Discussions:   services.Discussions,
-		SubmitRecords: services.SubmitRecords,
-		Admin:         services.Admin,
+		Auth:                services.Auth,
+		Users:               services.Users,
+		Classes:             services.Classes,
+		Problems:            services.Problems,
+		Testcases:           services.Testcases,
+		Competitions:        services.Competitions,
+		Discussions:         services.Discussions,
+		SubmitRecords:       services.SubmitRecords,
+		Admin:               services.Admin,
 		JudgeWritebackToken: cfg.JudgeWritebackToken,
 	})
 

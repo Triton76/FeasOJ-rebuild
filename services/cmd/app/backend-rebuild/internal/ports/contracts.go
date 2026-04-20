@@ -10,6 +10,8 @@ type AuthService interface {
 	Register(ctx context.Context, req RegisterRequest) (UserDTO, error)
 	Login(ctx context.Context, req LoginRequest) (LoginResponse, error)
 	Verify(ctx context.Context) (VerifyResponse, error)
+	SendPasswordResetCode(ctx context.Context, req PasswordResetCodeRequest) (PasswordResetCodeResponse, error)
+	ResetPassword(ctx context.Context, req PasswordResetRequest) error
 }
 
 type UsersService interface {
@@ -51,6 +53,8 @@ type CompetitionsService interface {
 	CreateContest(ctx context.Context, req CreateContestRequest) (ContestDTO, error)
 	UpdateContest(ctx context.Context, req UpdateContestRequest) (ContestDTO, error)
 	DeleteContest(ctx context.Context, req DeleteContestRequest) error
+	ListContestProblems(ctx context.Context, req ContestProblemsQuery) ([]ContestProblemBindingDTO, error)
+	ReplaceContestProblems(ctx context.Context, req ReplaceContestProblemsRequest) ([]ContestProblemBindingDTO, error)
 	JoinContest(ctx context.Context, req JoinContestRequest) (ContestParticipantDTO, error)
 	GetScoreboard(ctx context.Context, req ContestScoreboardQuery) (ContestScoreboardResponse, error)
 }
@@ -72,6 +76,7 @@ type SubmitRecordsService interface {
 type AdminService interface {
 	ListUsers(ctx context.Context, req AdminUsersQuery) ([]UserDTO, error)
 	UpdateUserStatus(ctx context.Context, req UpdateUserStatusRequest) (UserDTO, error)
+	UpdateUserRole(ctx context.Context, req UpdateUserRoleRequest) (UserDTO, error)
 }
 
 type RegisterRequest struct {
@@ -92,6 +97,20 @@ type LoginResponse struct {
 
 type VerifyResponse struct {
 	User UserDTO `json:"user"`
+}
+
+type PasswordResetCodeRequest struct {
+	Email string `json:"email"`
+}
+
+type PasswordResetCodeResponse struct {
+	ExpiresInSeconds int `json:"expires_in_seconds"`
+}
+
+type PasswordResetRequest struct {
+	Email       string `json:"email"`
+	Code        string `json:"code"`
+	NewPassword string `json:"new_password"`
 }
 
 type UserDTO struct {
@@ -195,10 +214,10 @@ type DeleteTestcaseRequest struct {
 }
 
 type ReorderTestcasesRequest struct {
-	ProblemID    int64    `json:"problem_id"`
-	TestcaseIDs  []string `json:"testcase_ids"`
-	ActorUserID  string   `json:"-"`
-	ActorRole    string   `json:"-"`
+	ProblemID   int64    `json:"problem_id"`
+	TestcaseIDs []string `json:"testcase_ids"`
+	ActorUserID string   `json:"-"`
+	ActorRole   string   `json:"-"`
 }
 
 type JudgeListTestcasesRequest struct {
@@ -206,12 +225,12 @@ type JudgeListTestcasesRequest struct {
 }
 
 type TestcaseDTO struct {
-	ID        string `json:"id"`
-	ProblemID int64  `json:"problem_id"`
-	InputData string `json:"input_data"`
+	ID         string `json:"id"`
+	ProblemID  int64  `json:"problem_id"`
+	InputData  string `json:"input_data"`
 	OutputData string `json:"output_data"`
-	IsSample  bool   `json:"is_sample"`
-	SortOrder int    `json:"sort_order"`
+	IsSample   bool   `json:"is_sample"`
+	SortOrder  int    `json:"sort_order"`
 }
 
 type ProblemsQuery struct {
@@ -353,6 +372,32 @@ type ContestScoreboardQuery struct {
 	ContestID int64 `json:"contest_id"`
 }
 
+type ContestProblemsQuery struct {
+	ContestID   int64  `json:"contest_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type ReplaceContestProblemsRequest struct {
+	ContestID   int64                     `json:"contest_id"`
+	Items       []ContestProblemBindingUpsert `json:"items"`
+	ActorUserID string                    `json:"-"`
+	ActorRole   string                    `json:"-"`
+}
+
+type ContestProblemBindingUpsert struct {
+	ProblemID    int64  `json:"problem_id"`
+	DisplayOrder int    `json:"display_order"`
+	Alias        string `json:"alias"`
+}
+
+type ContestProblemBindingDTO struct {
+	ContestID    int64  `json:"contest_id"`
+	ProblemID    int64  `json:"problem_id"`
+	DisplayOrder int    `json:"display_order"`
+	Alias        string `json:"alias"`
+}
+
 type ContestScoreboardResponse struct {
 	ContestID     int64                   `json:"contest_id"`
 	FreezeActive  bool                    `json:"freeze_active"`
@@ -428,10 +473,10 @@ const JudgeWritebackContractV1 = "v1"
 
 type JudgeWritebackRequest struct {
 	ContractVersion string `json:"contract_version"`
-	SubmissionID int64  `json:"submission_id"`
-	Result       string `json:"result"`
-	Score        *int   `json:"score"`
-	Source       string `json:"source"`
+	SubmissionID    int64  `json:"submission_id"`
+	Result          string `json:"result"`
+	Score           *int   `json:"score"`
+	Source          string `json:"source"`
 }
 
 type SubmissionsQuery struct {
@@ -461,4 +506,9 @@ type AdminUsersQuery struct {
 type UpdateUserStatusRequest struct {
 	UserID string `json:"user_id"`
 	Status string `json:"status"`
+}
+
+type UpdateUserRoleRequest struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 }

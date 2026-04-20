@@ -13,15 +13,15 @@ import (
 )
 
 type Handlers struct {
-	Auth          ports.AuthService
-	Users         ports.UsersService
-	Classes       ports.ClassesService
-	Problems      ports.ProblemsService
-	Testcases     ports.TestcasesService
-	Competitions  ports.CompetitionsService
-	Discussions   ports.DiscussionsService
-	SubmitRecords ports.SubmitRecordsService
-	Admin         ports.AdminService
+	Auth                ports.AuthService
+	Users               ports.UsersService
+	Classes             ports.ClassesService
+	Problems            ports.ProblemsService
+	Testcases           ports.TestcasesService
+	Competitions        ports.CompetitionsService
+	Discussions         ports.DiscussionsService
+	SubmitRecords       ports.SubmitRecordsService
+	Admin               ports.AdminService
 	JudgeWritebackToken string
 }
 
@@ -55,6 +55,8 @@ func fail(c *gin.Context, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ports.ErrRateLimited):
 		status = http.StatusTooManyRequests
+	case errors.Is(err, ports.ErrCapabilityDisabled):
+		status = http.StatusForbidden
 	}
 	c.JSON(status, gin.H{"error": err.Error()})
 }

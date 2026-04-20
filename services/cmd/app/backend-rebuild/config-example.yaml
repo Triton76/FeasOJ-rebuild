@@ -17,6 +17,7 @@ feature_flags:
   enable_scoreboard: true
   enable_rabbitmq_queue: false
   enable_embedded_judge_worker: true
+  enable_password_reset: false
   enable_class_workflow_v2: true
 
 rabbitmq:

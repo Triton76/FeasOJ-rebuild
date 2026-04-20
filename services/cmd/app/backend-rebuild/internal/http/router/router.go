@@ -20,6 +20,8 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 
 	api.POST("/auth/register", h.Register)
 	api.POST("/auth/login", h.Login)
+	api.POST("/auth/password/reset/code", h.SendPasswordResetCode)
+	api.POST("/auth/password/reset", h.ResetPassword)
 
 	authed := api.Group("")
 	authed.Use(middleware.HeaderVerify(cfg.JWTSecret))
@@ -53,6 +55,8 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/contests", h.ListContests)
 	authed.POST("/contests", h.CreateContest)
 	authed.GET("/contests/:contest_id", h.GetContest)
+	authed.GET("/contests/:contest_id/problems", h.ListContestProblems)
+	authed.PUT("/contests/:contest_id/problems", h.ReplaceContestProblems)
 	if cfg.EnableScoreboard {
 		authed.GET("/contests/:contest_id/scoreboard", h.GetScoreboard)
 	}
@@ -79,4 +83,5 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	admin.Use(middleware.AdminOnly())
 	admin.GET("/users", h.AdminListUsers)
 	admin.PATCH("/users/status", h.AdminUpdateUserStatus)
+	admin.PATCH("/users/role", h.AdminUpdateUserRole)
 }

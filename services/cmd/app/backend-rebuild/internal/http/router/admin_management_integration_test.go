@@ -34,6 +34,14 @@ func (s fakeAdminAuthService) Verify(ctx context.Context) (ports.VerifyResponse,
 	return ports.VerifyResponse{User: ports.UserDTO{ID: "admin-1", Role: "admin", Status: "active"}}, nil
 }
 
+func (s fakeAdminAuthService) SendPasswordResetCode(ctx context.Context, req ports.PasswordResetCodeRequest) (ports.PasswordResetCodeResponse, error) {
+	return ports.PasswordResetCodeResponse{ExpiresInSeconds: 300}, nil
+}
+
+func (s fakeAdminAuthService) ResetPassword(ctx context.Context, req ports.PasswordResetRequest) error {
+	return nil
+}
+
 type fakeProblemsService struct {
 	nextID int64
 	items  map[int64]ports.ProblemDTO
@@ -178,6 +186,18 @@ func (s *fakeCompetitionsService) JoinContest(ctx context.Context, req ports.Joi
 	return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
 }
 
+func (s *fakeCompetitionsService) ListContestProblems(ctx context.Context, req ports.ContestProblemsQuery) ([]ports.ContestProblemBindingDTO, error) {
+	return []ports.ContestProblemBindingDTO{}, nil
+}
+
+func (s *fakeCompetitionsService) ReplaceContestProblems(ctx context.Context, req ports.ReplaceContestProblemsRequest) ([]ports.ContestProblemBindingDTO, error) {
+	resp := make([]ports.ContestProblemBindingDTO, 0, len(req.Items))
+	for _, item := range req.Items {
+		resp = append(resp, ports.ContestProblemBindingDTO{ContestID: req.ContestID, ProblemID: item.ProblemID, DisplayOrder: item.DisplayOrder, Alias: item.Alias})
+	}
+	return resp, nil
+}
+
 func (s *fakeCompetitionsService) GetScoreboard(ctx context.Context, req ports.ContestScoreboardQuery) (ports.ContestScoreboardResponse, error) {
 	return ports.ContestScoreboardResponse{ContestID: req.ContestID, VisibleItems: []ports.ContestScoreboardItem{}}, nil
 }
@@ -245,7 +265,7 @@ func TestAdminProblemContestManagementIntegration(t *testing.T) {
 		t.Fatalf("list problems failed status=%d body=%s", listProblemsRec.Code, listProblemsRec.Body.String())
 	}
 
-	createContestReq := httptest.NewRequest(http.MethodPost, "/api/v1/contests", strings.NewReader(`{"title":"C1","subtitle":"phase2","description":"","announcement":"","class_id":"","visibility":"public","rule_type":"acm","status":"scheduled","is_encrypted":false,"password":"","start_at":"2026-04-20T10:00:00Z","end_at":"2026-04-20T12:00:00Z"}`))
+	createContestReq := httptest.NewRequest(http.MethodPost, "/api/v1/contests", strings.NewReader(`{"title":"C1","subtitle":"phase2","description":"","announcement":"","class_id":"","visibility":"public","rule_type":"acm","status":"draft","is_encrypted":false,"password":"","start_at":"2026-04-20T10:00:00Z","end_at":"2026-04-20T12:00:00Z"}`))
 	createContestReq.Header.Set("Content-Type", "application/json")
 	createContestReq.Header.Set("Authorization", "Bearer "+loginResp.Data.Token)
 	createContestRec := httptest.NewRecorder()

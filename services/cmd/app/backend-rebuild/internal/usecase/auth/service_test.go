@@ -51,7 +51,7 @@ func (r *fakeAuthRepo) UpdatePasswordByEmail(ctx context.Context, email, passwor
 
 func TestRegisterAndLoginAndVerify(t *testing.T) {
 	repo := newFakeAuthRepo()
-	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour)
+	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour, true)
 
 	registered, err := svc.Register(context.Background(), ports.RegisterRequest{
 		Username: "alice",
@@ -93,7 +93,7 @@ func TestRegisterAndLoginAndVerify(t *testing.T) {
 
 func TestRegisterInvalidEmail(t *testing.T) {
 	repo := newFakeAuthRepo()
-	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour)
+	svc := NewService(repo, "test-secret", "test-issuer", 2*time.Hour, true)
 
 	_, err := svc.Register(context.Background(), ports.RegisterRequest{
 		Username: "alice",

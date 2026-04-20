@@ -34,6 +34,18 @@ func (r *fakeScoreboardRepo) GetByID(ctx context.Context, contestID int64) (Cont
 func (r *fakeScoreboardRepo) Create(ctx context.Context, c Contest) (Contest, error) { return c, nil }
 func (r *fakeScoreboardRepo) Update(ctx context.Context, c Contest) (Contest, error) { return c, nil }
 func (r *fakeScoreboardRepo) Delete(ctx context.Context, contestID int64) error      { return nil }
+func (r *fakeScoreboardRepo) ListProblemBindings(ctx context.Context, contestID int64) ([]ContestProblemBinding, error) {
+	return nil, nil
+}
+func (r *fakeScoreboardRepo) ReplaceProblemBindings(ctx context.Context, contestID int64, items []ContestProblemBinding) error {
+	return nil
+}
+func (r *fakeScoreboardRepo) CountProblemBindings(ctx context.Context, contestID int64) (int64, error) {
+	return 0, nil
+}
+func (r *fakeScoreboardRepo) CountExistingProblems(ctx context.Context, problemIDs []int64) (int64, error) {
+	return int64(len(problemIDs)), nil
+}
 
 func (r *fakeScoreboardRepo) CreateParticipant(ctx context.Context, p Participant) (Participant, error) {
 	return p, nil
@@ -243,6 +255,18 @@ func (r *fakeVisibilityRepo) GetByID(ctx context.Context, contestID int64) (Cont
 func (r *fakeVisibilityRepo) Create(ctx context.Context, c Contest) (Contest, error) { return c, nil }
 func (r *fakeVisibilityRepo) Update(ctx context.Context, c Contest) (Contest, error) { return c, nil }
 func (r *fakeVisibilityRepo) Delete(ctx context.Context, contestID int64) error      { return nil }
+func (r *fakeVisibilityRepo) ListProblemBindings(ctx context.Context, contestID int64) ([]ContestProblemBinding, error) {
+	return nil, nil
+}
+func (r *fakeVisibilityRepo) ReplaceProblemBindings(ctx context.Context, contestID int64, items []ContestProblemBinding) error {
+	return nil
+}
+func (r *fakeVisibilityRepo) CountProblemBindings(ctx context.Context, contestID int64) (int64, error) {
+	return 0, nil
+}
+func (r *fakeVisibilityRepo) CountExistingProblems(ctx context.Context, problemIDs []int64) (int64, error) {
+	return int64(len(problemIDs)), nil
+}
 func (r *fakeVisibilityRepo) CreateParticipant(ctx context.Context, p Participant) (Participant, error) {
 	return p, nil
 }

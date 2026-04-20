@@ -11,12 +11,12 @@ const SubmissionJobContractV1 = "v1"
 // SubmissionJob 表示一个待判题的提交任务
 type SubmissionJob struct {
 	ContractVersion string `json:"contract_version"`
-	SubmissionID int64  `json:"submission_id"`
-	UserID       string `json:"user_id"`
-	ProblemID    int64  `json:"problem_id"`
-	ContestID    int64  `json:"contest_id"`
-	Language     string `json:"language"`
-	SourceCode   string `json:"source_code"`
+	SubmissionID    int64  `json:"submission_id"`
+	UserID          string `json:"user_id"`
+	ProblemID       int64  `json:"problem_id"`
+	ContestID       int64  `json:"contest_id"`
+	Language        string `json:"language"`
+	SourceCode      string `json:"source_code"`
 }
 
 // SubmissionQueue 定义提交队列的接口

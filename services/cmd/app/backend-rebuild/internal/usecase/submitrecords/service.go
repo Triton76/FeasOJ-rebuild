@@ -87,12 +87,12 @@ func (s *Service) CreateSubmission(ctx context.Context, req ports.CreateSubmissi
 	// 幂等键为 submission_id，重复入队时直接返回成功
 	job := ports.SubmissionJob{
 		ContractVersion: ports.SubmissionJobContractV1,
-		SubmissionID: item.ID,
-		UserID:       item.UserID,
-		ProblemID:    item.ProblemID,
-		ContestID:    item.ContestID,
-		Language:     item.Language,
-		SourceCode:   item.SourceCode,
+		SubmissionID:    item.ID,
+		UserID:          item.UserID,
+		ProblemID:       item.ProblemID,
+		ContestID:       item.ContestID,
+		Language:        item.Language,
+		SourceCode:      item.SourceCode,
 	}
 	if err := s.queue.Enqueue(ctx, job); err != nil {
 		observability.LogJSON("submission.enqueue_failed", map[string]any{
@@ -160,10 +160,10 @@ func (s *Service) MarkSubmissionJudging(ctx context.Context, submissionID int64,
 		return ports.SubmissionDTO{}, err
 	}
 	observability.LogJSON("submission.transition", map[string]any{
-		"submission_id": submissionID,
+		"submission_id":  submissionID,
 		"previous_state": item.Result,
-		"new_state": SubmissionResultJudging,
-		"source": source,
+		"new_state":      SubmissionResultJudging,
+		"source":         source,
 	})
 	return toDTO(updated), nil
 }
@@ -211,10 +211,10 @@ func (s *Service) WritebackSubmission(ctx context.Context, req ports.JudgeWriteb
 		return ports.SubmissionDTO{}, err
 	}
 	observability.LogJSON("submission.writeback", map[string]any{
-		"submission_id": req.SubmissionID,
+		"submission_id":  req.SubmissionID,
 		"previous_state": item.Result,
-		"new_state": req.Result,
-		"source": req.Source,
+		"new_state":      req.Result,
+		"source":         req.Source,
 	})
 	success = true
 	return toDTO(updated), nil

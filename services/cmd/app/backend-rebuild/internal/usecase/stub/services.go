@@ -48,6 +48,14 @@ func (AuthService) Verify(context.Context) (ports.VerifyResponse, error) {
 	return ports.VerifyResponse{}, ports.ErrNotImplemented
 }
 
+func (AuthService) SendPasswordResetCode(context.Context, ports.PasswordResetCodeRequest) (ports.PasswordResetCodeResponse, error) {
+	return ports.PasswordResetCodeResponse{}, ports.ErrNotImplemented
+}
+
+func (AuthService) ResetPassword(context.Context, ports.PasswordResetRequest) error {
+	return ports.ErrNotImplemented
+}
+
 type UsersService struct{}
 
 func (UsersService) GetProfile(context.Context, string) (ports.UserDTO, error) {
@@ -162,6 +170,14 @@ func (CompetitionsService) DeleteContest(context.Context, ports.DeleteContestReq
 	return ports.ErrNotImplemented
 }
 
+func (CompetitionsService) ListContestProblems(context.Context, ports.ContestProblemsQuery) ([]ports.ContestProblemBindingDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) ReplaceContestProblems(context.Context, ports.ReplaceContestProblemsRequest) ([]ports.ContestProblemBindingDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
 func (CompetitionsService) JoinContest(context.Context, ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {
 	return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
 }
@@ -213,5 +229,9 @@ func (AdminService) ListUsers(context.Context, ports.AdminUsersQuery) ([]ports.U
 }
 
 func (AdminService) UpdateUserStatus(context.Context, ports.UpdateUserStatusRequest) (ports.UserDTO, error) {
+	return ports.UserDTO{}, ports.ErrNotImplemented
+}
+
+func (AdminService) UpdateUserRole(context.Context, ports.UpdateUserRoleRequest) (ports.UserDTO, error) {
 	return ports.UserDTO{}, ports.ErrNotImplemented
 }

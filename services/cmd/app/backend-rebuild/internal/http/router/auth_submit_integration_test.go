@@ -37,6 +37,14 @@ func (s fakeAuthService) Verify(ctx context.Context) (ports.VerifyResponse, erro
 	return ports.VerifyResponse{User: ports.UserDTO{ID: "u-1", Role: "student", Status: "active"}}, nil
 }
 
+func (s fakeAuthService) SendPasswordResetCode(ctx context.Context, req ports.PasswordResetCodeRequest) (ports.PasswordResetCodeResponse, error) {
+	return ports.PasswordResetCodeResponse{ExpiresInSeconds: 300}, nil
+}
+
+func (s fakeAuthService) ResetPassword(ctx context.Context, req ports.PasswordResetRequest) error {
+	return nil
+}
+
 type fakeSubmitService struct {
 	lastReq ports.CreateSubmissionRequest
 }

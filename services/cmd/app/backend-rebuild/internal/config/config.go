@@ -31,6 +31,7 @@ type Config struct {
 	EnableRabbitMQQueue       bool
 	EnableEmbeddedJudgeWorker bool
 	EnableClassWorkflowV2     bool
+	EnablePasswordReset       bool
 	RabbitMQURL               string
 	RabbitMQExchange          string
 	RabbitMQMainQueue         string
@@ -64,6 +65,7 @@ type fileConfig struct {
 		EnableRabbitMQQueue       *bool `yaml:"enable_rabbitmq_queue"`
 		EnableEmbeddedJudgeWorker *bool `yaml:"enable_embedded_judge_worker"`
 		EnableClassWorkflowV2     *bool `yaml:"enable_class_workflow_v2"`
+		EnablePasswordReset       *bool `yaml:"enable_password_reset"`
 	} `yaml:"feature_flags"`
 	RabbitMQ struct {
 		URL        string `yaml:"url"`
@@ -87,6 +89,7 @@ func Load() (Config, error) {
 		EnableRabbitMQQueue:       false,
 		EnableEmbeddedJudgeWorker: true,
 		EnableClassWorkflowV2:     true,
+		EnablePasswordReset:       false,
 		RabbitMQExchange:          "judge.submission.exchange",
 		RabbitMQMainQueue:         "judge.submission.main",
 		RabbitMQRetryQueue:        "judge.submission.retry",
@@ -160,6 +163,9 @@ func loadFromYAML(cfg *Config) error {
 	if fc.FeatureFlags.EnableClassWorkflowV2 != nil {
 		cfg.EnableClassWorkflowV2 = *fc.FeatureFlags.EnableClassWorkflowV2
 	}
+	if fc.FeatureFlags.EnablePasswordReset != nil {
+		cfg.EnablePasswordReset = *fc.FeatureFlags.EnablePasswordReset
+	}
 	if fc.RabbitMQ.URL != "" {
 		cfg.RabbitMQURL = fc.RabbitMQ.URL
 	}
@@ -223,6 +229,9 @@ func loadFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_CLASS_WORKFLOW_V2"); v != "" {
 		cfg.EnableClassWorkflowV2 = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_PASSWORD_RESET"); v != "" {
+		cfg.EnablePasswordReset = v == "1" || v == "true" || v == "TRUE"
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_URL"); v != "" {
 		cfg.RabbitMQURL = v

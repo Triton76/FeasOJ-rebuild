@@ -9,15 +9,15 @@ import (
 )
 
 type fakeRepo struct {
-	owner string
-	cases map[string]Testcase
+	owner     string
+	cases     map[string]Testcase
 	byProblem map[int64][]string
 }
 
 func newFakeRepo(owner string) *fakeRepo {
 	return &fakeRepo{
-		owner: owner,
-		cases: make(map[string]Testcase),
+		owner:     owner,
+		cases:     make(map[string]Testcase),
 		byProblem: make(map[int64][]string),
 	}
 }
@@ -100,22 +100,22 @@ func TestCreateTestcasePermissionAndValidation(t *testing.T) {
 	svc := NewService(repo)
 
 	_, err := svc.CreateTestcase(context.Background(), ports.CreateTestcaseRequest{
-		ProblemID: 1,
-		InputData: "in",
-		OutputData: "out",
+		ProblemID:   1,
+		InputData:   "in",
+		OutputData:  "out",
 		ActorUserID: "student-1",
-		ActorRole: "student",
+		ActorRole:   "student",
 	})
 	if !errors.Is(err, ports.ErrForbidden) {
 		t.Fatalf("expected forbidden for student, got %v", err)
 	}
 
 	_, err = svc.CreateTestcase(context.Background(), ports.CreateTestcaseRequest{
-		ProblemID: 1,
-		InputData: "",
-		OutputData: "out",
+		ProblemID:   1,
+		InputData:   "",
+		OutputData:  "out",
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if !errors.Is(err, ports.ErrInvalidArgument) {
 		t.Fatalf("expected invalid argument for missing input, got %v", err)
@@ -127,31 +127,31 @@ func TestCreateAndReorderAndJudgeRead(t *testing.T) {
 	svc := NewService(repo)
 
 	first, err := svc.CreateTestcase(context.Background(), ports.CreateTestcaseRequest{
-		ProblemID: 1,
-		InputData: "in1",
-		OutputData: "out1",
+		ProblemID:   1,
+		InputData:   "in1",
+		OutputData:  "out1",
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("create first failed: %v", err)
 	}
 	second, err := svc.CreateTestcase(context.Background(), ports.CreateTestcaseRequest{
-		ProblemID: 1,
-		InputData: "in2",
-		OutputData: "out2",
+		ProblemID:   1,
+		InputData:   "in2",
+		OutputData:  "out2",
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("create second failed: %v", err)
 	}
 
 	items, err := svc.ReorderTestcases(context.Background(), ports.ReorderTestcasesRequest{
-		ProblemID: 1,
+		ProblemID:   1,
 		TestcaseIDs: []string{second.ID, first.ID},
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("reorder failed: %v", err)
@@ -174,33 +174,33 @@ func TestListUpdateDeletePermission(t *testing.T) {
 	svc := NewService(repo)
 
 	created, err := svc.CreateTestcase(context.Background(), ports.CreateTestcaseRequest{
-		ProblemID: 1,
-		InputData: "in",
-		OutputData: "out",
+		ProblemID:   1,
+		InputData:   "in",
+		OutputData:  "out",
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
 
 	_, err = svc.ListTestcases(context.Background(), ports.ListTestcasesRequest{
-		ProblemID: 1,
+		ProblemID:   1,
 		ActorUserID: "teacher-2",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if !errors.Is(err, ports.ErrForbidden) {
 		t.Fatalf("expected forbidden for non-owner teacher, got %v", err)
 	}
 
 	updated, err := svc.UpdateTestcase(context.Background(), ports.UpdateTestcaseRequest{
-		ProblemID: 1,
-		TestcaseID: created.ID,
-		InputData: "in-updated",
-		OutputData: "out-updated",
-		IsSample: true,
+		ProblemID:   1,
+		TestcaseID:  created.ID,
+		InputData:   "in-updated",
+		OutputData:  "out-updated",
+		IsSample:    true,
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
@@ -210,10 +210,10 @@ func TestListUpdateDeletePermission(t *testing.T) {
 	}
 
 	err = svc.DeleteTestcase(context.Background(), ports.DeleteTestcaseRequest{
-		ProblemID: 1,
-		TestcaseID: created.ID,
+		ProblemID:   1,
+		TestcaseID:  created.ID,
 		ActorUserID: "teacher-1",
-		ActorRole: "teacher",
+		ActorRole:   "teacher",
 	})
 	if err != nil {
 		t.Fatalf("delete failed: %v", err)

@@ -16,5 +16,6 @@ type User struct {
 type UserRepository interface {
 	ListUsers(ctx context.Context, offset, limit int) ([]User, error)
 	UpdateUserStatus(ctx context.Context, userID, status string) (bool, error)
+	UpdateUserRole(ctx context.Context, userID, role string) (bool, error)
 	GetByID(ctx context.Context, userID string) (User, error)
 }

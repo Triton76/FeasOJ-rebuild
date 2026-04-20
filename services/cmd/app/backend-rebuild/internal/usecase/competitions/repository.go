@@ -43,6 +43,15 @@ type ScoreboardSubmission struct {
 	SubmittedAt time.Time
 }
 
+type ContestProblemBinding struct {
+	ContestID    int64
+	ProblemID    int64
+	DisplayOrder int
+	Alias        string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type Repository interface {
 	ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]Contest, error)
 	GetVisibleByID(ctx context.Context, contestID int64, actorUserID, actorRole string) (Contest, error)
@@ -50,6 +59,10 @@ type Repository interface {
 	Create(ctx context.Context, c Contest) (Contest, error)
 	Update(ctx context.Context, c Contest) (Contest, error)
 	Delete(ctx context.Context, contestID int64) error
+	ListProblemBindings(ctx context.Context, contestID int64) ([]ContestProblemBinding, error)
+	ReplaceProblemBindings(ctx context.Context, contestID int64, items []ContestProblemBinding) error
+	CountProblemBindings(ctx context.Context, contestID int64) (int64, error)
+	CountExistingProblems(ctx context.Context, problemIDs []int64) (int64, error)
 	CreateParticipant(ctx context.Context, p Participant) (Participant, error)
 	ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error)
 }

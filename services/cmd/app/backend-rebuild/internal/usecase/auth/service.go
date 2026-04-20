@@ -10,25 +10,43 @@ import (
 	"context"
 	"errors"
 	"net/mail"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo      UserRepository
-	jwtSecret string
-	jwtIssuer string
-	jwtTTL    time.Duration
+	repo                  UserRepository
+	jwtSecret             string
+	jwtIssuer             string
+	jwtTTL                time.Duration
+	passwordResetEnabled  bool
+	passwordResetCodeTTL  time.Duration
+	passwordResetInterval time.Duration
+	mu                    sync.Mutex
+	resetCodes            map[string]resetCodeRecord
+	lastCodeSentAt        map[string]time.Time
 }
 
-func NewService(repo UserRepository, jwtSecret, jwtIssuer string, jwtTTL time.Duration) *Service {
+type resetCodeRecord struct {
+	Code      string
+	ExpiresAt time.Time
+}
+
+func NewService(repo UserRepository, jwtSecret, jwtIssuer string, jwtTTL time.Duration, passwordResetEnabled bool) *Service {
 	return &Service{
-		repo:      repo,
-		jwtSecret: jwtSecret,
-		jwtIssuer: jwtIssuer,
-		jwtTTL:    jwtTTL,
+		repo:                  repo,
+		jwtSecret:             jwtSecret,
+		jwtIssuer:             jwtIssuer,
+		jwtTTL:                jwtTTL,
+		passwordResetEnabled:  passwordResetEnabled,
+		passwordResetCodeTTL:  5 * time.Minute,
+		passwordResetInterval: time.Minute,
+		resetCodes:            map[string]resetCodeRecord{},
+		lastCodeSentAt:        map[string]time.Time{},
 	}
 }
 
@@ -136,6 +154,86 @@ func (s *Service) Verify(ctx context.Context) (ports.VerifyResponse, error) {
 	}
 
 	return ports.VerifyResponse{User: toUserDTO(user)}, nil
+}
+
+func (s *Service) SendPasswordResetCode(ctx context.Context, req ports.PasswordResetCodeRequest) (ports.PasswordResetCodeResponse, error) {
+	if !s.passwordResetEnabled {
+		return ports.PasswordResetCodeResponse{}, ports.ErrCapabilityDisabled
+	}
+	if s.repo == nil {
+		return ports.PasswordResetCodeResponse{}, ports.ErrNotImplemented
+	}
+
+	email := strings.TrimSpace(req.Email)
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ports.PasswordResetCodeResponse{}, ports.ErrInvalidArgument
+	}
+
+	now := time.Now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if last, ok := s.lastCodeSentAt[email]; ok && now.Sub(last) < s.passwordResetInterval {
+		return ports.PasswordResetCodeResponse{}, ports.ErrRateLimited
+	}
+	code := buildResetCode(now)
+	s.resetCodes[email] = resetCodeRecord{Code: code, ExpiresAt: now.Add(s.passwordResetCodeTTL)}
+	s.lastCodeSentAt[email] = now
+
+	return ports.PasswordResetCodeResponse{ExpiresInSeconds: int(s.passwordResetCodeTTL.Seconds())}, nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, req ports.PasswordResetRequest) error {
+	if !s.passwordResetEnabled {
+		return ports.ErrCapabilityDisabled
+	}
+	if s.repo == nil {
+		return ports.ErrNotImplemented
+	}
+
+	email := strings.TrimSpace(req.Email)
+	code := strings.TrimSpace(req.Code)
+	newPassword := strings.TrimSpace(req.NewPassword)
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ports.ErrInvalidArgument
+	}
+	if code == "" || len(newPassword) < 6 {
+		return ports.ErrInvalidArgument
+	}
+
+	now := time.Now().UTC()
+	s.mu.Lock()
+	rec, ok := s.resetCodes[email]
+	if !ok || now.After(rec.ExpiresAt) || rec.Code != code {
+		s.mu.Unlock()
+		return ports.ErrInvalidArgument
+	}
+	delete(s.resetCodes, email)
+	s.mu.Unlock()
+
+	hash := passwordutil.EncryptPassword(newPassword)
+	if hash == "" {
+		return errors.New("failed to hash password")
+	}
+	affected, err := s.repo.UpdatePasswordByEmail(ctx, email, hash, now)
+	if err != nil {
+		return err
+	}
+	if !affected {
+		return ports.ErrNotFound
+	}
+	return nil
+}
+
+func buildResetCode(now time.Time) string {
+	v := now.UnixNano() % 1000000
+	if v < 0 {
+		v = -v
+	}
+	code := strconv.FormatInt(v, 10)
+	for len(code) < 6 {
+		code = "0" + code
+	}
+	return code
 }
 
 func toUserDTO(u User) ports.UserDTO {

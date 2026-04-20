@@ -13,6 +13,7 @@ var (
 	ErrNotFound            = errors.New("not found")
 	ErrConflict            = errors.New("conflict")
 	ErrRateLimited         = errors.New("rate limited")
+	ErrCapabilityDisabled  = errors.New("capability disabled")
 	ErrDuplicateSubmission = errors.New("submission_id already in queue")
 	ErrQueueEmpty          = errors.New("queue is empty")
 )

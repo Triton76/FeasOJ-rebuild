@@ -86,10 +86,10 @@ func (r *Repository) Create(ctx context.Context, testcase testcasesusecase.Testc
 
 func (r *Repository) Update(ctx context.Context, testcase testcasesusecase.Testcase) (testcasesusecase.Testcase, error) {
 	updates := map[string]any{
-		"input_data": testcase.InputData,
+		"input_data":  testcase.InputData,
 		"output_data": testcase.OutputData,
-		"is_sample": testcase.IsSample,
-		"updated_at": time.Now().UTC(),
+		"is_sample":   testcase.IsSample,
+		"updated_at":  time.Now().UTC(),
 	}
 	res := r.db.WithContext(ctx).
 		Model(&testcaseRow{}).

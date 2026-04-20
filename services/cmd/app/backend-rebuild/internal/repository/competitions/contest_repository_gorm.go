@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -43,6 +44,16 @@ type participantRow struct {
 	UpdatedAt time.Time  `gorm:"column:updated_at"`
 }
 
+type contestProblemRow struct {
+	ID           string    `gorm:"column:id"`
+	ContestID    int64     `gorm:"column:contest_id"`
+	ProblemID    int64     `gorm:"column:problem_id"`
+	DisplayOrder int       `gorm:"column:display_order"`
+	Alias        string    `gorm:"column:alias"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
+}
+
 type scoreboardSubmissionRow struct {
 	UserID      string    `gorm:"column:user_id"`
 	Username    string    `gorm:"column:username"`
@@ -53,6 +64,7 @@ type scoreboardSubmissionRow struct {
 }
 
 func (participantRow) TableName() string { return "contest_participants" }
+func (contestProblemRow) TableName() string { return "contest_problems" }
 
 type Repository struct{ db *gorm.DB }
 
@@ -170,6 +182,83 @@ func (r *Repository) Delete(ctx context.Context, contestID int64) error {
 		return ports.ErrNotFound
 	}
 	return nil
+}
+
+func (r *Repository) ListProblemBindings(ctx context.Context, contestID int64) ([]competitionsusecase.ContestProblemBinding, error) {
+	var rows []contestProblemRow
+	err := r.db.WithContext(ctx).
+		Where("contest_id = ?", contestID).
+		Order("display_order ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]competitionsusecase.ContestProblemBinding, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, competitionsusecase.ContestProblemBinding{
+			ContestID:    row.ContestID,
+			ProblemID:    row.ProblemID,
+			DisplayOrder: row.DisplayOrder,
+			Alias:        row.Alias,
+			CreatedAt:    row.CreatedAt,
+			UpdatedAt:    row.UpdatedAt,
+		})
+	}
+	return resp, nil
+}
+
+func (r *Repository) ReplaceProblemBindings(ctx context.Context, contestID int64, items []competitionsusecase.ContestProblemBinding) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("contest_id = ?", contestID).Delete(&contestProblemRow{}).Error; err != nil {
+			return err
+		}
+		if len(items) == 0 {
+			return nil
+		}
+
+		rows := make([]contestProblemRow, 0, len(items))
+		for _, item := range items {
+			rows = append(rows, contestProblemRow{
+				ID:           uuid.NewString(),
+				ContestID:    contestID,
+				ProblemID:    item.ProblemID,
+				DisplayOrder: item.DisplayOrder,
+				Alias:        strings.TrimSpace(item.Alias),
+				CreatedAt:    item.CreatedAt,
+				UpdatedAt:    item.UpdatedAt,
+			})
+		}
+
+		if err := tx.Create(&rows).Error; err != nil {
+			if isDuplicate(err) {
+				return ports.ErrConflict
+			}
+			return err
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CountProblemBindings(ctx context.Context, contestID int64) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&contestProblemRow{}).Where("contest_id = ?", contestID).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *Repository) CountExistingProblems(ctx context.Context, problemIDs []int64) (int64, error) {
+	if len(problemIDs) == 0 {
+		return 0, nil
+	}
+	var count int64
+	err := r.db.WithContext(ctx).Table("problems").Where("id IN ?", problemIDs).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *Repository) CreateParticipant(ctx context.Context, p competitionsusecase.Participant) (competitionsusecase.Participant, error) {

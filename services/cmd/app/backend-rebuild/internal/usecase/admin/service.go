@@ -84,6 +84,39 @@ func (s *Service) UpdateUserStatus(ctx context.Context, req ports.UpdateUserStat
 	return toUserDTO(u), nil
 }
 
+func (s *Service) UpdateUserRole(ctx context.Context, req ports.UpdateUserRoleRequest) (ports.UserDTO, error) {
+	if s.repo == nil {
+		return ports.UserDTO{}, ports.ErrNotImplemented
+	}
+
+	userID := strings.TrimSpace(req.UserID)
+	role := strings.TrimSpace(req.Role)
+	if userID == "" {
+		return ports.UserDTO{}, ports.ErrInvalidArgument
+	}
+	if role != "student" && role != "teacher" && role != "admin" {
+		return ports.UserDTO{}, ports.ErrInvalidArgument
+	}
+
+	affected, err := s.repo.UpdateUserRole(ctx, userID, role)
+	if err != nil {
+		return ports.UserDTO{}, err
+	}
+	if !affected {
+		return ports.UserDTO{}, ports.ErrNotFound
+	}
+
+	u, err := s.repo.GetByID(ctx, userID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.UserDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.UserDTO{}, err
+	}
+
+	return toUserDTO(u), nil
+}
+
 func toUserDTO(u User) ports.UserDTO {
 	return ports.UserDTO{
 		ID:       u.ID,

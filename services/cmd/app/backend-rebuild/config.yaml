@@ -22,6 +22,7 @@ feature_flags:
   enable_rabbitmq_queue: false
   enable_embedded_judge_worker: true
   enable_class_workflow_v2: true
+  enable_password_reset: false
 
 rabbitmq:
   url: amqp://guest:guest@localhost:5672/
