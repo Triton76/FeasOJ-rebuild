@@ -41,6 +41,6 @@
 
 ## 7. Integration, Rollout, and Rollback Readiness
 
-- [ ] 7.1 [P0][Depends: 2.4,3.4,4.4,5.4,6.4][AC: 五大闭环能力回归测试通过] Execute integrated regression checklist for A-E scope.
+- [x] 7.1 [P0][Depends: 2.4,3.4,4.4,5.4,6.4][AC: 五大闭环能力回归测试通过] Execute integrated regression checklist for A-E scope.
 - [ ] 7.2 [P0][Depends: 7.1][AC: 灰度开关、回滚开关和监控指标在发布前确认] Validate rollout/rollback controls in staging.
 - [ ] 7.3 [P0][Depends: 7.2][AC: 发布评审结论为可进入实施] Complete implementation readiness review and handoff.
