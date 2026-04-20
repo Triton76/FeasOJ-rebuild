@@ -79,6 +79,7 @@ func (s *Service) Register(ctx context.Context, req ports.RegisterRequest) (port
 		Username:     username,
 		Email:        email,
 		PasswordHash: hash,
+		PasswordUpdatedAt: now,
 		Role:         "student",
 		Score:        0,
 		Status:       "active",
@@ -151,6 +152,12 @@ func (s *Service) Verify(ctx context.Context) (ports.VerifyResponse, error) {
 
 	if user.Status != "active" {
 		return ports.VerifyResponse{}, ports.ErrForbidden
+	}
+	if claims.IssuedAt == nil {
+		return ports.VerifyResponse{}, ports.ErrUnauthorized
+	}
+	if !user.PasswordUpdatedAt.IsZero() && claims.IssuedAt.Time.Before(user.PasswordUpdatedAt) {
+		return ports.VerifyResponse{}, ports.ErrUnauthorized
 	}
 
 	return ports.VerifyResponse{User: toUserDTO(user)}, nil

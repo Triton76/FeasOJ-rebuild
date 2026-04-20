@@ -13,6 +13,7 @@ type User struct {
 	Username     string
 	Email        string
 	PasswordHash string
+	PasswordUpdatedAt time.Time
 	Role         string
 	Avatar       string
 	Synopsis     string

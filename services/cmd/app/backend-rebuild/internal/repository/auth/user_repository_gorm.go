@@ -19,6 +19,7 @@ type userRow struct {
 	Username     string    `gorm:"column:username"`
 	Email        string    `gorm:"column:email"`
 	PasswordHash string    `gorm:"column:password_hash"`
+	PasswordUpdatedAt time.Time `gorm:"column:password_updated_at"`
 	Role         string    `gorm:"column:role"`
 	Avatar       string    `gorm:"column:avatar"`
 	Synopsis     string    `gorm:"column:synopsis"`
@@ -78,7 +79,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (authusecase.Us
 func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, passwordHash string, updatedAt time.Time) (bool, error) {
 	result := r.db.WithContext(ctx).Model(&userRow{}).
 		Where("email = ?", email).
-		Updates(map[string]any{"password_hash": passwordHash, "updated_at": updatedAt})
+		Updates(map[string]any{"password_hash": passwordHash, "password_updated_at": updatedAt, "updated_at": updatedAt})
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -91,6 +92,7 @@ func toRow(u authusecase.User) userRow {
 		Username:     u.Username,
 		Email:        u.Email,
 		PasswordHash: u.PasswordHash,
+		PasswordUpdatedAt: u.PasswordUpdatedAt,
 		Role:         u.Role,
 		Avatar:       u.Avatar,
 		Synopsis:     u.Synopsis,
@@ -107,6 +109,7 @@ func fromRow(r userRow) authusecase.User {
 		Username:     r.Username,
 		Email:        r.Email,
 		PasswordHash: r.PasswordHash,
+		PasswordUpdatedAt: r.PasswordUpdatedAt,
 		Role:         r.Role,
 		Avatar:       r.Avatar,
 		Synopsis:     r.Synopsis,

@@ -23,7 +23,7 @@
 - [x] 4.1 [P0][Depends: 1.2][AC: 明确“接入或下线”决策并固化为配置策略] Finalize policy for verification-code/password-reset capability.
 - [x] 4.2 [P0][Depends: 4.1][AC: enabled/disabled 两种策略均有确定行为和错误码] Implement policy-driven endpoint behavior.
 - [x] 4.3 [P0][Depends: 4.2][AC: 验证码过期/错误/限流场景测试通过] Implement verification code constraints and validation paths.
-- [ ] 4.4 [P1][Depends: 4.2][AC: 密码重置成功后旧凭证失效策略验证通过] Add credential invalidation handling and tests.
+- [x] 4.4 [P1][Depends: 4.2][AC: 密码重置成功后旧凭证失效策略验证通过] Add credential invalidation handling and tests.
 
 ## 5. Admin Role/Status Governance Completion
 

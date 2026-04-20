@@ -11,6 +11,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func init() {
+	// Keep issued-at precision so password-reset invalidation can compare timestamps accurately.
+	jwt.TimePrecision = time.Nanosecond
+}
+
 type Claims struct {
 	UserID string `json:"uid"`
 	Role   string `json:"role"`

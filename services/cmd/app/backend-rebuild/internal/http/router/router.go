@@ -24,7 +24,7 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	api.POST("/auth/password/reset", h.ResetPassword)
 
 	authed := api.Group("")
-	authed.Use(middleware.HeaderVerify(cfg.JWTSecret))
+	authed.Use(middleware.HeaderVerify(cfg.JWTSecret, h.Auth))
 	authed.GET("/auth/verify", h.Verify)
 
 	authed.GET("/users/:user_id", h.GetProfile)

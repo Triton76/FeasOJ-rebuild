@@ -4,14 +4,16 @@
 package middleware
 
 import (
+	"FeasOJ/app/backend-rebuild/internal/ports"
 	"FeasOJ/app/backend-rebuild/internal/security"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func HeaderVerify(jwtSecret string) gin.HandlerFunc {
+func HeaderVerify(jwtSecret string, authService ports.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
 		if !strings.HasPrefix(authHeader, "Bearer ") {
@@ -32,6 +34,18 @@ func HeaderVerify(jwtSecret string) gin.HandlerFunc {
 
 		ctx := security.WithClaims(c.Request.Context(), claims)
 		c.Request = c.Request.WithContext(ctx)
+
+		if authService != nil {
+			if _, err := authService.Verify(c.Request.Context()); err != nil {
+				status := http.StatusUnauthorized
+				if errors.Is(err, ports.ErrForbidden) {
+					status = http.StatusForbidden
+				}
+				c.AbortWithStatusJSON(status, gin.H{"error": "invalid credential state"})
+				return
+			}
+		}
+
 		c.Next()
 	}
 }
