@@ -102,6 +102,14 @@ onMounted(async () => {
           </template>
         </v-list-item>
 
+        <v-list-item rounded="lg" prepend-icon="mdi-google-classroom" value="CLASS" color="primary"
+          @click="router.push('/classes')" class="nav-item"
+          :class="{ 'nav-item-active': isCurrentPage('/classes') }" :active="isCurrentPage('/classes')">
+          <template v-slot:title>
+            <span class="nav-title">Class</span>
+          </template>
+        </v-list-item>
+
         <v-list-item rounded="lg" prepend-icon="mdi-podium-gold" value="RANK" @click="router.push('/rank')"
           color="primary" class="nav-item" :class="{ 'nav-item-active': isCurrentPage('/rank') }"
           :active="isCurrentPage('/rank')">

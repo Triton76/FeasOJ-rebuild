@@ -42,6 +42,13 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/problems/:problem_id", h.GetProblem)
 	authed.PATCH("/problems/:problem_id", h.UpdateProblem)
 	authed.DELETE("/problems/:problem_id", h.DeleteProblem)
+	if cfg.EnableTestcaseAPIs {
+		authed.POST("/problems/:problem_id/testcases", h.CreateTestcase)
+		authed.GET("/problems/:problem_id/testcases", h.ListTestcases)
+		authed.PATCH("/problems/:problem_id/testcases/:testcase_id", h.UpdateTestcase)
+		authed.DELETE("/problems/:problem_id/testcases/:testcase_id", h.DeleteTestcase)
+		authed.POST("/problems/:problem_id/testcases/reorder", h.ReorderTestcases)
+	}
 
 	authed.GET("/contests", h.ListContests)
 	authed.POST("/contests", h.CreateContest)
@@ -63,6 +70,9 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/metrics/runtime", h.RuntimeMetrics)
 	if cfg.EnableJudgeWriteback {
 		api.POST("/judge/writeback", h.JudgeWriteback)
+	}
+	if cfg.EnableTestcaseAPIs {
+		api.GET("/judge/problems/:problem_id/testcases", h.JudgeListTestcases)
 	}
 
 	admin := authed.Group("/admin")

@@ -224,3 +224,27 @@ func TestJudgeWritebackRejectsTerminalRollback(t *testing.T) {
 		t.Fatalf("expected ErrConflict for terminal rollback, got %v", err)
 	}
 }
+
+func TestJudgeWritebackRejectsPendingToTerminal(t *testing.T) {
+	repo := newFakeSubmitRepo()
+	svc := NewService(repo, queue.NewMemorySubmissionQueue())
+
+	created, err := svc.CreateSubmission(context.Background(), ports.CreateSubmissionRequest{
+		UserID:     "u-1",
+		ProblemID:  1001,
+		Language:   "cpp",
+		SourceCode: "int main(){return 0;}",
+	})
+	if err != nil {
+		t.Fatalf("create submission failed: %v", err)
+	}
+
+	_, err = svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+		SubmissionID: created.ID,
+		Result:       SubmissionResultAccepted,
+		Source:       "judgecore",
+	})
+	if !errors.Is(err, ports.ErrConflict) {
+		t.Fatalf("expected ErrConflict for pending->terminal writeback, got %v", err)
+	}
+}

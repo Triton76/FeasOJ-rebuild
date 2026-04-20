@@ -85,6 +85,27 @@ const routes = [
         }
     },
     {
+        path: '/classes',
+        component: () => import('../pages/Class/Main.vue'),
+        meta: {
+            titleKey: 'Class'
+        }
+    },
+    {
+        path: '/classes/join',
+        component: () => import('../pages/Class/Join.vue'),
+        meta: {
+            titleKey: 'Join Class'
+        }
+    },
+    {
+        path: '/classes/:class_id/memberships',
+        component: () => import('../pages/Class/Members.vue'),
+        meta: {
+            titleKey: 'Class Members'
+        }
+    },
+    {
         path: '/discussion', component: () => import('../pages/Discuss/Main.vue'),
         meta: {
             titleKey: 'message.discussion'

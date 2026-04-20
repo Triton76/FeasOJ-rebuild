@@ -36,6 +36,15 @@ type ProblemsService interface {
 	DeleteProblem(ctx context.Context, req DeleteProblemRequest) error
 }
 
+type TestcasesService interface {
+	CreateTestcase(ctx context.Context, req CreateTestcaseRequest) (TestcaseDTO, error)
+	ListTestcases(ctx context.Context, req ListTestcasesRequest) ([]TestcaseDTO, error)
+	UpdateTestcase(ctx context.Context, req UpdateTestcaseRequest) (TestcaseDTO, error)
+	DeleteTestcase(ctx context.Context, req DeleteTestcaseRequest) error
+	ReorderTestcases(ctx context.Context, req ReorderTestcasesRequest) ([]TestcaseDTO, error)
+	ListTestcasesForJudge(ctx context.Context, req JudgeListTestcasesRequest) ([]TestcaseDTO, error)
+}
+
 type CompetitionsService interface {
 	ListContests(ctx context.Context, req ContestsQuery) ([]ContestDTO, error)
 	GetContest(ctx context.Context, contestID int64) (ContestDTO, error)
@@ -151,6 +160,58 @@ type ClassMembershipDTO struct {
 	UserID      string `json:"user_id"`
 	RoleInClass string `json:"role_in_class"`
 	Status      string `json:"status"`
+}
+
+type CreateTestcaseRequest struct {
+	ProblemID   int64  `json:"problem_id"`
+	InputData   string `json:"input_data"`
+	OutputData  string `json:"output_data"`
+	IsSample    bool   `json:"is_sample"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type ListTestcasesRequest struct {
+	ProblemID   int64  `json:"problem_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type UpdateTestcaseRequest struct {
+	ProblemID   int64  `json:"problem_id"`
+	TestcaseID  string `json:"testcase_id"`
+	InputData   string `json:"input_data"`
+	OutputData  string `json:"output_data"`
+	IsSample    bool   `json:"is_sample"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type DeleteTestcaseRequest struct {
+	ProblemID   int64  `json:"problem_id"`
+	TestcaseID  string `json:"testcase_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type ReorderTestcasesRequest struct {
+	ProblemID    int64    `json:"problem_id"`
+	TestcaseIDs  []string `json:"testcase_ids"`
+	ActorUserID  string   `json:"-"`
+	ActorRole    string   `json:"-"`
+}
+
+type JudgeListTestcasesRequest struct {
+	ProblemID int64 `json:"problem_id"`
+}
+
+type TestcaseDTO struct {
+	ID        string `json:"id"`
+	ProblemID int64  `json:"problem_id"`
+	InputData string `json:"input_data"`
+	OutputData string `json:"output_data"`
+	IsSample  bool   `json:"is_sample"`
+	SortOrder int    `json:"sort_order"`
 }
 
 type ProblemsQuery struct {

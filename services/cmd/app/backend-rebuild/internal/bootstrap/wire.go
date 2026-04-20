@@ -15,6 +15,7 @@ import (
 	discussionsrepo "FeasOJ/app/backend-rebuild/internal/repository/discussions"
 	problemsrepo "FeasOJ/app/backend-rebuild/internal/repository/problems"
 	submitrecordsrepo "FeasOJ/app/backend-rebuild/internal/repository/submitrecords"
+	testcasesrepo "FeasOJ/app/backend-rebuild/internal/repository/testcases"
 	usersrepo "FeasOJ/app/backend-rebuild/internal/repository/users"
 	"FeasOJ/app/backend-rebuild/internal/scheduler"
 	adminusecase "FeasOJ/app/backend-rebuild/internal/usecase/admin"
@@ -25,6 +26,7 @@ import (
 	problemsusecase "FeasOJ/app/backend-rebuild/internal/usecase/problems"
 	"FeasOJ/app/backend-rebuild/internal/usecase/stub"
 	submitrecordsusecase "FeasOJ/app/backend-rebuild/internal/usecase/submitrecords"
+	testcasesusecase "FeasOJ/app/backend-rebuild/internal/usecase/testcases"
 	usersusecase "FeasOJ/app/backend-rebuild/internal/usecase/users"
 	"context"
 	"log"
@@ -63,6 +65,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			competitionsRepository := competitionsrepo.NewRepository(db)
 			discussionsRepository := discussionsrepo.NewRepository(db)
 			submitRecordsRepository := submitrecordsrepo.NewRepository(db)
+			testcasesRepository := testcasesrepo.NewRepository(db)
 
 			submissionQueue := queue.NewMemorySubmissionQueue()
 			if cfg.EnableRabbitMQQueue && cfg.RabbitMQURL != "" {
@@ -89,6 +92,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			services.Competitions = competitionsusecase.NewService(competitionsRepository)
 			services.Discussions = discussionsusecase.NewService(discussionsRepository)
 			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository, submissionQueue)
+			services.Testcases = testcasesusecase.NewService(testcasesRepository)
 			if cfg.EnableEmbeddedJudgeWorker && cfg.EnableJudgeWriteback {
 				queue.NewJudgeWorker(submissionQueue, services.SubmitRecords, 300*time.Millisecond).Start(schedulerCtx)
 			}
@@ -102,6 +106,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 		Users:         services.Users,
 		Classes:       services.Classes,
 		Problems:      services.Problems,
+		Testcases:     services.Testcases,
 		Competitions:  services.Competitions,
 		Discussions:   services.Discussions,
 		SubmitRecords: services.SubmitRecords,

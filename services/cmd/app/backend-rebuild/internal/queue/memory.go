@@ -4,6 +4,7 @@
 package queue
 
 import (
+	"FeasOJ/app/backend-rebuild/internal/observability"
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"context"
 	"sync"
@@ -45,6 +46,8 @@ func (q *MemorySubmissionQueue) Enqueue(ctx context.Context, job ports.Submissio
 	jobCopy := job
 	q.jobs = append(q.jobs, &jobCopy)
 	q.seen[job.SubmissionID] = true
+	observability.IncQueueEnqueue()
+	observability.LogJSON("submission.enqueued", map[string]any{"submission_id": job.SubmissionID, "queue_name": "memory", "attempt": 1})
 	return nil
 }
 
@@ -59,6 +62,8 @@ func (q *MemorySubmissionQueue) Dequeue(ctx context.Context) (*ports.SubmissionJ
 
 	job := q.jobs[0]
 	q.jobs = q.jobs[1:]
+	observability.IncQueueConsume()
+	observability.LogJSON("submission.dequeue", map[string]any{"submission_id": job.SubmissionID, "queue_name": "memory", "attempt": 1})
 	return job, nil
 }
 
@@ -72,6 +77,7 @@ func (q *MemorySubmissionQueue) Acknowledge(ctx context.Context, submissionID in
 	}
 
 	q.acked[submissionID] = true
+	observability.LogJSON("submission.ack", map[string]any{"submission_id": submissionID, "queue_name": "memory"})
 	return nil
 }
 

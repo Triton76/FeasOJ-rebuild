@@ -17,6 +17,7 @@ type Handlers struct {
 	Users         ports.UsersService
 	Classes       ports.ClassesService
 	Problems      ports.ProblemsService
+	Testcases     ports.TestcasesService
 	Competitions  ports.CompetitionsService
 	Discussions   ports.DiscussionsService
 	SubmitRecords ports.SubmitRecordsService

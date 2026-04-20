@@ -13,6 +13,7 @@ type Services struct {
 	Users         ports.UsersService
 	Classes       ports.ClassesService
 	Problems      ports.ProblemsService
+	Testcases     ports.TestcasesService
 	Competitions  ports.CompetitionsService
 	Discussions   ports.DiscussionsService
 	SubmitRecords ports.SubmitRecordsService
@@ -25,6 +26,7 @@ func NewServices() Services {
 		Users:         UsersService{},
 		Classes:       ClassesService{},
 		Problems:      ProblemsService{},
+		Testcases:     TestcasesService{},
 		Competitions:  CompetitionsService{},
 		Discussions:   DiscussionsService{},
 		SubmitRecords: SubmitRecordsService{},
@@ -113,6 +115,32 @@ func (ProblemsService) DeleteProblem(context.Context, ports.DeleteProblemRequest
 }
 
 type CompetitionsService struct{}
+
+type TestcasesService struct{}
+
+func (TestcasesService) CreateTestcase(context.Context, ports.CreateTestcaseRequest) (ports.TestcaseDTO, error) {
+	return ports.TestcaseDTO{}, ports.ErrNotImplemented
+}
+
+func (TestcasesService) ListTestcases(context.Context, ports.ListTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (TestcasesService) UpdateTestcase(context.Context, ports.UpdateTestcaseRequest) (ports.TestcaseDTO, error) {
+	return ports.TestcaseDTO{}, ports.ErrNotImplemented
+}
+
+func (TestcasesService) DeleteTestcase(context.Context, ports.DeleteTestcaseRequest) error {
+	return ports.ErrNotImplemented
+}
+
+func (TestcasesService) ReorderTestcases(context.Context, ports.ReorderTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (TestcasesService) ListTestcasesForJudge(context.Context, ports.JudgeListTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
 
 func (CompetitionsService) ListContests(context.Context, ports.ContestsQuery) ([]ports.ContestDTO, error) {
 	return nil, ports.ErrNotImplemented

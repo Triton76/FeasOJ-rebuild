@@ -13,6 +13,8 @@ var (
 	queueDLQTotal         int64
 	writebackSuccessTotal int64
 	writebackFailureTotal int64
+	writebackLatencySumMS int64
+	writebackTotal        int64
 
 	scoreboardMu           sync.Mutex
 	scoreboardQueryTotal   int64
@@ -44,6 +46,15 @@ func IncWritebackFailure() {
 	atomic.AddInt64(&writebackFailureTotal, 1)
 }
 
+func ObserveWritebackLatency(d time.Duration) {
+	ms := d.Milliseconds()
+	if ms < 0 {
+		ms = 0
+	}
+	atomic.AddInt64(&writebackLatencySumMS, ms)
+	atomic.AddInt64(&writebackTotal, 1)
+}
+
 func ObserveScoreboardQueryLatency(d time.Duration, success bool) {
 	ms := d.Milliseconds()
 	if ms < 0 {
@@ -70,6 +81,11 @@ func Snapshot() map[string]any {
 	if total > 0 {
 		avgLatency = latencySum / total
 	}
+	writebackTotalCount := atomic.LoadInt64(&writebackTotal)
+	writebackLatencyAvg := int64(0)
+	if writebackTotalCount > 0 {
+		writebackLatencyAvg = atomic.LoadInt64(&writebackLatencySumMS) / writebackTotalCount
+	}
 
 	return map[string]any{
 		"queue_consume_total":      atomic.LoadInt64(&queueConsumeTotal),
@@ -78,6 +94,7 @@ func Snapshot() map[string]any {
 		"queue_dlq_total":          atomic.LoadInt64(&queueDLQTotal),
 		"writeback_success_total":  atomic.LoadInt64(&writebackSuccessTotal),
 		"writeback_failure_total":  atomic.LoadInt64(&writebackFailureTotal),
+		"writeback_avg_ms":         writebackLatencyAvg,
 		"scoreboard_query_total":   total,
 		"scoreboard_query_success": success,
 		"scoreboard_query_avg_ms":  avgLatency,

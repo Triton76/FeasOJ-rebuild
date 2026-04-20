@@ -95,8 +95,14 @@ func (s *Service) CreateSubmission(ctx context.Context, req ports.CreateSubmissi
 		SourceCode:   item.SourceCode,
 	}
 	if err := s.queue.Enqueue(ctx, job); err != nil {
-		// 入队失败不影响提交本身的返回，但会记录日志（TODO 增加日志)
-		// 至少一次语义：异步队列消费者会持续重试
+		observability.LogJSON("submission.enqueue_failed", map[string]any{
+			"submission_id": item.ID,
+			"error":         err.Error(),
+		})
+	} else {
+		observability.LogJSON("submission.enqueue_ok", map[string]any{
+			"submission_id": item.ID,
+		})
 	}
 
 	return toDTO(item), nil
@@ -163,8 +169,10 @@ func (s *Service) MarkSubmissionJudging(ctx context.Context, submissionID int64,
 }
 
 func (s *Service) WritebackSubmission(ctx context.Context, req ports.JudgeWritebackRequest) (ports.SubmissionDTO, error) {
+	start := time.Now()
 	success := false
 	defer func() {
+		observability.ObserveWritebackLatency(time.Since(start))
 		if success {
 			observability.IncWritebackSuccess()
 		} else {

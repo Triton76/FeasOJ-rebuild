@@ -50,12 +50,13 @@ const problemFields = reactive({
     title: "",
     content: "",
     difficulty: 0,
-    time_limit: "",
-    memory_limit: "",
+    time_limit_ms: 1000,
+    memory_limit_mb: 128,
     input: "",
     output: "",
-    competition_id: null,
-    is_visible: true,
+    class_id: "",
+    visibility: 'public',
+    status: 'published',
     test_cases: [{ input_data: '', output_data: '' }]
 });
 
@@ -63,8 +64,8 @@ const headers = ref([
     { title: 'ID', value: 'id', align: 'center', sortable: false },
     { title: t('message.problem'), value: 'title', align: 'center', sortable: false },
     { title: t('message.difficulty'), value: 'difficulty', align: 'center', sortable: false },
-    { title: t('message.contestid'), value: 'competition_id', align: 'center', sortable: false },
-    { title: t('message.isvisible'), value: 'is_visible', align: 'center', sortable: false },
+    { title: t('message.contestid'), value: 'class_id', align: 'center', sortable: false },
+    { title: t('message.isvisible'), value: 'visibility', align: 'center', sortable: false },
     { title: t('message.operation'), value: 'actions', align: 'center', sortable: false },
 ])
 
@@ -167,15 +168,16 @@ const createProblem = async () => {
     problemFields.title = "";
     problemFields.content = "";
     problemFields.difficulty = 0;
-    problemFields.time_limit = "";
-    problemFields.memory_limit = "";
+    problemFields.time_limit_ms = 1000;
+    problemFields.memory_limit_mb = 128;
     problemFields.input = "";
     problemFields.output = "";
-    problemFields.competition_id = 0;
-    problemFields.is_visible = true;
+    problemFields.class_id = "";
+    problemFields.visibility = 'public';
+    problemFields.status = 'published';
     problemFields.test_cases = [{ input_data: '', output_data: '' }];
     const compResp = await getAllCompetitionsInfo();
-    competitionIds.value = [0, ...compResp.data.data.map(data => data.id)];
+    competitionIds.value = ["", ...compResp.data.data.map(data => String(data.id))];
     networkloading.value = false;
 }
 
@@ -185,9 +187,15 @@ const goToEditProblem = async (pid) => {
     dialog.value = true;
     networkloading.value = true;
     const problemResp = await getProblemAllInfoByAdmin(pid);
-    Object.assign(problemFields, problemResp.data.data);
+    Object.assign(problemFields, {
+        ...problemResp.data.data,
+        test_cases: problemResp.data.data.test_cases || [{ input_data: '', output_data: '' }],
+        class_id: problemResp.data.data.class_id || "",
+        visibility: problemResp.data.data.visibility || 'public',
+        status: problemResp.data.data.status || 'published'
+    });
     const compResp = await getAllCompetitionsInfo();
-    competitionIds.value = [0, ...compResp.data.data.map(data => data.id)];
+    competitionIds.value = ["", ...compResp.data.data.map(data => String(data.id))];
     networkloading.value = false;
 };
 
@@ -321,13 +329,13 @@ onUnmounted(() => {
                                     </td>
                                     <td class="text-center pa-4">
                                         <span class="text-body-2 text-medium-emphasis">
-                                            {{ item.competition_id }}
+                                            {{ item.class_id || '-' }}
                                         </span>
                                     </td>
                                     <td class="text-center pa-4">
-                                        <v-chip :color="item.is_visible ? 'success' : 'error'" variant="tonal"
+                                        <v-chip :color="item.visibility !== 'private' ? 'success' : 'error'" variant="tonal"
                                             size="small" class="font-weight-medium">
-                                            {{ item.is_visible ? $t('message.visible') : $t('message.invisible') }}
+                                            {{ item.visibility !== 'private' ? $t('message.visible') : $t('message.invisible') }}
                                         </v-chip>
                                     </td>
                                     <td class="text-center pa-4">
@@ -378,18 +386,18 @@ onUnmounted(() => {
                         <!-- 所属竞赛ID及是否可见 -->
                         <v-row class="limitRow">
                             <v-select :items="competitionIds" :label="$t('message.contestid')"
-                                v-model.number="problemFields.competition_id" variant="solo-filled"></v-select>
+                                v-model="problemFields.class_id" variant="solo-filled"></v-select>
                             <div style="margin-inline: 30px;"></div>
-                            <v-switch v-model="problemFields.is_visible" :label="$t('message.isvisible')"
+                            <v-switch v-model="problemFields.visibility" true-value="public" false-value="private" :label="$t('message.isvisible')"
                                 color="primary" inset></v-switch>
                         </v-row>
                         <!-- 时间、内存限制 -->
                         <v-row class="limitRow">
-                            <v-text-field :label="$t('message.timeLimit') + '(S)'" v-model="problemFields.time_limit"
+                            <v-text-field :label="$t('message.timeLimit') + '(MS)'" v-model.number="problemFields.time_limit_ms"
                                 variant="solo-filled"></v-text-field>
                             <div style="margin-inline: 30px;"></div>
-                            <v-text-field :label="$t('message.memoryLimit') + '(MB)'"
-                                v-model="problemFields.memory_limit" variant="solo-filled"></v-text-field>
+                            <v-text-field :label="$t('message.memoryLimit') + '(MB)'" v-model.number="problemFields.memory_limit_mb"
+                                variant="solo-filled"></v-text-field>
                         </v-row>
                         <!-- 显示给用户的输入输出样例 -->
                         <v-row class="limitRow">

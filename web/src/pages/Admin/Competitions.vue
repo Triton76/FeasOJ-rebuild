@@ -9,7 +9,6 @@ import { MdEditor } from "md-editor-v3";
 import { getMdEditorTheme } from '../../utils/theme';
 import moment from 'moment';
 import "md-editor-v3/lib/style.css";
-import { difficultyLang } from '../../utils/dynamic_styles';
 
 const { locale } = useI18n();
 const { t } = useI18n();
@@ -47,10 +46,13 @@ const competitionFields = reactive({
     id: null,
     title: "",
     subtitle: "",
-    difficulty: 0,
+    description: "",
+    rule_type: 'acm',
     password: "",
-    encrypted: false,
-    is_visible: true,
+    is_encrypted: false,
+    visibility: 'public',
+    class_id: '',
+    status: 'scheduled',
     start_at: "",
     end_at: "",
     announcement: ""
@@ -59,16 +61,16 @@ const competitionFields = reactive({
 const headers = ref([
     { title: 'ID', value: 'id', align: 'center', sortable: false },
     { title: t('message.competition'), value: 'title', align: 'center', sortable: false },
-    { title: t('message.difficulty'), value: 'difficulty', align: 'center', sortable: false },
+    { title: 'Rule Type', value: 'rule_type', align: 'center', sortable: false },
     { title: t('message.status'), value: 'status', align: 'center', sortable: false },
-    { title: t('message.isvisible'), value: 'is_visible', align: 'center', sortable: false },
+    { title: t('message.isvisible'), value: 'visibility', align: 'center', sortable: false },
     { title: t("message.operation"), value: 'actions', align: 'center', sortable: false }
 ])
 
-const difficultyOptions = [
-    { value: 0, label: t('message.easy') },
-    { value: 1, label: t('message.medium') },
-    { value: 2, label: t('message.hard') }
+const ruleTypeOptions = [
+    { value: 'acm', label: 'ACM' },
+    { value: 'oi', label: 'OI' },
+    { value: 'assignment', label: 'Assignment' }
 ];
 
 const isAdminRole = (role) => role === 'admin' || role === 1 || role === '1'
@@ -98,9 +100,10 @@ const handlePageChange = (page) => {
 // 获取竞赛状态文本
 const getStatusText = (status) => {
     switch (status) {
-        case 0: return t('message.compenotstarted');
-        case 1: return t('message.compeprogress');
-        case 2: return t('message.compeover');
+        case 'scheduled': return t('message.compenotstarted');
+        case 'running': return t('message.compeprogress');
+        case 'ended': return t('message.compeover');
+        case 'draft': return 'Draft';
         default: return t('message.unknown');
     }
 }
@@ -108,10 +111,24 @@ const getStatusText = (status) => {
 // 获取竞赛状态颜色
 const getStatusColor = (status) => {
     switch (status) {
-        case 0: return 'warning';
-        case 1: return 'success';
-        case 2: return 'error';
+        case 'scheduled': return 'warning';
+        case 'running': return 'success';
+        case 'ended': return 'error';
+        case 'draft': return 'info';
         default: return 'grey';
+    }
+}
+
+const getRuleTypeLabel = (ruleType) => {
+    switch (ruleType) {
+        case 'acm':
+            return 'ACM';
+        case 'oi':
+            return 'OI';
+        case 'assignment':
+            return 'Assignment';
+        default:
+            return ruleType || '-';
     }
 }
 
@@ -123,7 +140,10 @@ const handleThemeChange = (event) => {
 // 字段检查
 const validateFields = () => {
     for (const key in competitionFields) {
-        if (key === "password" && !competitionFields.encrypted || key === "announcement") {
+        if (key === "announcement" || key === "description" || key === "class_id") {
+            continue;
+        }
+        if (key === "password" && !competitionFields.is_encrypted) {
             continue;
         }
         if (competitionFields[key] === "" || (Array.isArray(competitionFields[key]) && competitionFields[key].length === 0)) {
@@ -150,7 +170,7 @@ const delCompetition = async () => {
 
 // 清除密码
 const clearPassword = () => {
-    if (!competitionFields.encrypted) {
+    if (!competitionFields.is_encrypted) {
         competitionFields.password = '';
     }
 }
@@ -163,10 +183,13 @@ const createCompetition = async () => {
     competitionFields.id = totalCompetitions.value + 1;
     competitionFields.title = "";
     competitionFields.subtitle = "";
-    competitionFields.difficulty = 0;
+    competitionFields.description = "";
+    competitionFields.rule_type = 'acm';
     competitionFields.password = "";
-    competitionFields.encrypted = false;
-    competitionFields.is_visible = true;
+    competitionFields.is_encrypted = false;
+    competitionFields.visibility = 'public';
+    competitionFields.class_id = '';
+    competitionFields.status = 'scheduled';
     competitionFields.start_at = "";
     competitionFields.end_at = "";
     competitionFields.announcement = "";
@@ -185,7 +208,7 @@ const save = async () => {
     }
     if (!validateFields()) return;
     networkloading.value = true;
-    const comData = { ...competitionFields };
+    const comData = { ...competitionFields, start_at: competitionFields.start_at, end_at: competitionFields.end_at };
     try {
         await updateComInfo(comData);
         showAlert(t("message.success") + "!", "reload");
@@ -349,10 +372,8 @@ onUnmounted(() => {
                                         </v-btn>
                                     </td>
                                     <td class="text-center pa-4">
-                                        <v-chip
-                                            :color="item.difficulty === 0 ? 'success' : item.difficulty === 1 ? 'warning' : 'error'"
-                                            variant="tonal" size="small" class="font-weight-medium">
-                                            {{ $t(difficultyLang(item.difficulty)) }}
+                                        <v-chip color="primary" variant="tonal" size="small" class="font-weight-medium">
+                                            {{ getRuleTypeLabel(item.rule_type) }}
                                         </v-chip>
                                     </td>
                                     <td class="text-center pa-4">
@@ -362,9 +383,9 @@ onUnmounted(() => {
                                         </v-chip>
                                     </td>
                                     <td class="text-center pa-4">
-                                        <v-chip :color="item.is_visible ? 'success' : 'error'" variant="tonal"
+                                        <v-chip :color="item.visibility !== 'private' ? 'success' : 'error'" variant="tonal"
                                             size="small" class="font-weight-medium">
-                                            {{ item.is_visible ? $t('message.visible') : $t('message.invisible') }}
+                                            {{ item.visibility !== 'private' ? $t('message.visible') : $t('message.invisible') }}
                                         </v-chip>
                                     </td>
                                     <td class="text-center pa-4">
@@ -373,7 +394,7 @@ onUnmounted(() => {
                                                 <v-btn v-bind="props" variant="text" icon="mdi-dots-horizontal"></v-btn>
                                             </template>
                                             <v-list rounded="xl">
-                                                <v-list-item :disabled="(item.status != 2) || (item.scored != false)"
+                                                <v-list-item :disabled="item.status !== 'ended'"
                                                     @click="calcCompetition(item.id)">
                                                     <template v-slot:default="{ active, toggle }">
                                                         <div class="d-flex align-center">
@@ -383,8 +404,7 @@ onUnmounted(() => {
                                                         </div>
                                                     </template>
                                                 </v-list-item>
-                                                <v-list-item @click="getScoreBoard(item.id)"
-                                                    :disabled="item.scored != true">
+                                                <v-list-item @click="getScoreBoard(item.id)">
                                                     <template v-slot:default="{ active, toggle }">
                                                         <div class="d-flex align-center">
                                                             <v-icon icon="mdi-note-text" class="me-2"></v-icon>
@@ -434,19 +454,19 @@ onUnmounted(() => {
                             variant="solo-filled"></v-text-field>
                         <v-row class="limitRow">
                             <!-- 难易程度 -->
-                            <v-select :items="difficultyOptions" item-title="label" item-value="value"
-                                :label="$t('message.difficulty')" v-model="competitionFields.difficulty"
+                            <v-select :items="ruleTypeOptions" item-title="label" item-value="value"
+                                label="Rule Type" v-model="competitionFields.rule_type"
                                 variant="solo-filled" />
                             <div style="margin-inline: 30px;"></div>
                             <!-- 是否可见 -->
-                            <v-switch v-model="competitionFields.is_visible" :label="$t('message.isvisible')"
+                            <v-switch v-model="competitionFields.visibility" true-value="public" false-value="private" :label="$t('message.isvisible')"
                                 color="primary" inset></v-switch>
                             <div style="margin-inline: 30px;"></div>
                             <!-- 启用密码 -->
-                            <v-switch v-model="competitionFields.encrypted" :label="$t('message.withapwd')"
+                            <v-switch v-model="competitionFields.is_encrypted" :label="$t('message.withapwd')"
                                 color="primary" inset @change="clearPassword"></v-switch>
                         </v-row>
-                        <v-text-field v-if="competitionFields.encrypted" v-model="competitionFields.password"
+                        <v-text-field v-if="competitionFields.is_encrypted" v-model="competitionFields.password"
                             :append-icon="showPwd ? 'mdi-eye' : 'mdi-eye-off'" variant="solo-filled"
                             :type="showPwd ? 'text' : 'password'" :label="$t('message.password')" counter
                             @click:append="showPwd = !showPwd"></v-text-field>
