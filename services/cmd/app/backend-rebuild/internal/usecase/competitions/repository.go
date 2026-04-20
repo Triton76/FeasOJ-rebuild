@@ -34,6 +34,16 @@ type Participant struct {
 	JoinedAt  *time.Time
 }
 
+type ParticipantDetail struct {
+	ID        string
+	ContestID int64
+	UserID    string
+	Username  string
+	Avatar    string
+	Status    string
+	JoinedAt  *time.Time
+}
+
 type ScoreboardSubmission struct {
 	UserID      string
 	Username    string
@@ -64,5 +74,8 @@ type Repository interface {
 	CountProblemBindings(ctx context.Context, contestID int64) (int64, error)
 	CountExistingProblems(ctx context.Context, problemIDs []int64) (int64, error)
 	CreateParticipant(ctx context.Context, p Participant) (Participant, error)
+	GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (Participant, error)
+	ListParticipantsByContest(ctx context.Context, contestID int64) ([]ParticipantDetail, error)
+	UpdateParticipantStatus(ctx context.Context, contestID int64, userID, fromStatus, toStatus string, updatedAt time.Time) (Participant, error)
 	ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error)
 }

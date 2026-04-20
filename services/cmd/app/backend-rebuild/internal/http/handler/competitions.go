@@ -184,3 +184,63 @@ func (h Handlers) ReplaceContestProblems(c *gin.Context) {
 	}
 	ok(c, resp)
 }
+
+func (h Handlers) GetContestMembership(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	req := ports.ContestMembershipQuery{
+		ContestID:   contestID,
+		ActorUserID: c.GetString("auth_user_id"),
+		ActorRole:   c.GetString("auth_role"),
+	}
+	resp, svcErr := h.Competitions.GetContestMembership(c.Request.Context(), req)
+	if svcErr != nil {
+		fail(c, svcErr)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) ListContestParticipants(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	req := ports.ContestParticipantsQuery{
+		ContestID:   contestID,
+		ActorUserID: c.GetString("auth_user_id"),
+		ActorRole:   c.GetString("auth_role"),
+	}
+	resp, svcErr := h.Competitions.ListContestParticipants(c.Request.Context(), req)
+	if svcErr != nil {
+		fail(c, svcErr)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) QuitContest(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+
+	req := ports.QuitContestRequest{
+		ContestID:   contestID,
+		ActorUserID: c.GetString("auth_user_id"),
+		ActorRole:   c.GetString("auth_role"),
+	}
+	resp, svcErr := h.Competitions.QuitContest(c.Request.Context(), req)
+	if svcErr != nil {
+		fail(c, svcErr)
+		return
+	}
+	ok(c, resp)
+}

@@ -110,9 +110,8 @@ func (s *Service) CreateContest(ctx context.Context, req ports.CreateContestRequ
 	if visibility == "" || ruleType == "" || status == "" {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
 	}
-	if requiresBoundProblems(status, visibility) {
-		return ports.ContestDTO{}, ports.ErrConflict
-	}
+	// Note: 创建时不检查题目绑定，因为题目可以稍后绑定
+	// 只在更新状态时（从draft发布）才检查题目绑定
 	startAt, endAt, err := parseContestTimeRange(req.StartAt, req.EndAt)
 	if err != nil {
 		return ports.ContestDTO{}, ports.ErrInvalidArgument
@@ -339,6 +338,110 @@ func (s *Service) ReplaceContestProblems(ctx context.Context, req ports.ReplaceC
 		})
 	}
 	return resp, nil
+}
+
+func (s *Service) GetContestMembership(ctx context.Context, req ports.ContestMembershipQuery) (ports.ContestMembershipDTO, error) {
+	if s.repo == nil {
+		return ports.ContestMembershipDTO{}, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 || strings.TrimSpace(req.ActorUserID) == "" {
+		return ports.ContestMembershipDTO{}, ports.ErrInvalidArgument
+	}
+
+	if _, err := s.repo.GetVisibleByID(ctx, req.ContestID, strings.TrimSpace(req.ActorUserID), strings.TrimSpace(req.ActorRole)); err != nil {
+		return ports.ContestMembershipDTO{}, err
+	}
+
+	p, err := s.repo.GetParticipantByContestAndUser(ctx, req.ContestID, strings.TrimSpace(req.ActorUserID))
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.ContestMembershipDTO{ContestID: req.ContestID, UserID: strings.TrimSpace(req.ActorUserID), Joined: false, Status: ""}, nil
+	}
+	if err != nil {
+		return ports.ContestMembershipDTO{}, err
+	}
+	return ports.ContestMembershipDTO{ContestID: req.ContestID, UserID: p.UserID, Joined: true, Status: p.Status}, nil
+}
+
+func (s *Service) ListContestParticipants(ctx context.Context, req ports.ContestParticipantsQuery) ([]ports.ContestParticipantDetailDTO, error) {
+	if s.repo == nil {
+		return nil, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 || strings.TrimSpace(req.ActorUserID) == "" {
+		return nil, ports.ErrInvalidArgument
+	}
+
+	contest, err := s.repo.GetByID(ctx, req.ContestID)
+	if errors.Is(err, ports.ErrNotFound) {
+		return nil, ports.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	actorRole := strings.TrimSpace(req.ActorRole)
+	actorUserID := strings.TrimSpace(req.ActorUserID)
+	if actorRole != "admin" && contest.OwnerUserID != actorUserID {
+		membership, mErr := s.repo.GetParticipantByContestAndUser(ctx, req.ContestID, actorUserID)
+		if mErr != nil {
+			return nil, ports.ErrForbidden
+		}
+		if membership.Status == "quit" || membership.Status == "finished" {
+			return nil, ports.ErrForbidden
+		}
+	}
+
+	items, err := s.repo.ListParticipantsByContest(ctx, req.ContestID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]ports.ContestParticipantDetailDTO, 0, len(items))
+	for _, item := range items {
+		joinedAt := ""
+		if item.JoinedAt != nil {
+			joinedAt = item.JoinedAt.UTC().Format(time.RFC3339)
+		}
+		resp = append(resp, ports.ContestParticipantDetailDTO{
+			ID:        item.ID,
+			ContestID: item.ContestID,
+			UserID:    item.UserID,
+			Username:  item.Username,
+			Avatar:    item.Avatar,
+			Status:    item.Status,
+			JoinedAt:  joinedAt,
+		})
+	}
+	return resp, nil
+}
+
+func (s *Service) QuitContest(ctx context.Context, req ports.QuitContestRequest) (ports.ContestParticipantDTO, error) {
+	if s.repo == nil {
+		return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
+	}
+	if req.ContestID <= 0 || strings.TrimSpace(req.ActorUserID) == "" {
+		return ports.ContestParticipantDTO{}, ports.ErrInvalidArgument
+	}
+
+	if _, err := s.repo.GetVisibleByID(ctx, req.ContestID, strings.TrimSpace(req.ActorUserID), strings.TrimSpace(req.ActorRole)); err != nil {
+		return ports.ContestParticipantDTO{}, err
+	}
+
+	current, err := s.repo.GetParticipantByContestAndUser(ctx, req.ContestID, strings.TrimSpace(req.ActorUserID))
+	if errors.Is(err, ports.ErrNotFound) {
+		return ports.ContestParticipantDTO{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return ports.ContestParticipantDTO{}, err
+	}
+	if current.Status == "quit" || current.Status == "finished" {
+		return ports.ContestParticipantDTO{}, ports.ErrConflict
+	}
+
+	updated, err := s.repo.UpdateParticipantStatus(ctx, req.ContestID, strings.TrimSpace(req.ActorUserID), current.Status, "quit", time.Now().UTC())
+	if err != nil {
+		return ports.ContestParticipantDTO{}, err
+	}
+	return ports.ContestParticipantDTO{ID: updated.ID, ContestID: updated.ContestID, UserID: updated.UserID, Status: updated.Status}, nil
 }
 
 func (s *Service) JoinContest(ctx context.Context, req ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {

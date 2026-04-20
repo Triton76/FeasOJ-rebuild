@@ -198,6 +198,18 @@ func (s *fakeCompetitionsService) ReplaceContestProblems(ctx context.Context, re
 	return resp, nil
 }
 
+func (s *fakeCompetitionsService) GetContestMembership(ctx context.Context, req ports.ContestMembershipQuery) (ports.ContestMembershipDTO, error) {
+	return ports.ContestMembershipDTO{ContestID: req.ContestID, UserID: req.ActorUserID, Joined: true, Status: "registered"}, nil
+}
+
+func (s *fakeCompetitionsService) ListContestParticipants(ctx context.Context, req ports.ContestParticipantsQuery) ([]ports.ContestParticipantDetailDTO, error) {
+	return []ports.ContestParticipantDetailDTO{}, nil
+}
+
+func (s *fakeCompetitionsService) QuitContest(ctx context.Context, req ports.QuitContestRequest) (ports.ContestParticipantDTO, error) {
+	return ports.ContestParticipantDTO{ContestID: req.ContestID, UserID: req.ActorUserID, Status: "quit"}, nil
+}
+
 func (s *fakeCompetitionsService) GetScoreboard(ctx context.Context, req ports.ContestScoreboardQuery) (ports.ContestScoreboardResponse, error) {
 	return ports.ContestScoreboardResponse{ContestID: req.ContestID, VisibleItems: []ports.ContestScoreboardItem{}}, nil
 }

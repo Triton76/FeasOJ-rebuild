@@ -50,48 +50,47 @@ export const joinCompWithPwd = async (competitionId, competitionPwd) => {
 
 // 退出竞赛
 export const quitCompetition = async (competitionId) => {
-    throw {
-        response: {
-            status: 501,
-            data: {
-                error: 'contest quit endpoint is not available in rebuild backend'
-            }
+    return await axios.delete(`${apiUrl}/contests/${competitionId}/participant/self`, {
+        headers: {
+            ...authHeaders()
         }
-    };
+    });
 }
 
 // 查询用户是否在指定竞赛中
 export const isInCompetition = async (competitionId) => {
-    throw {
-        response: {
-            status: 501,
-            data: {
-                error: 'membership lookup endpoint is not available in rebuild backend'
-            }
+    return await axios.get(`${apiUrl}/contests/${competitionId}/participant/self`, {
+        headers: {
+            ...authHeaders()
         }
-    };
+    });
 }
 
 // 获取指定竞赛的所有用户
 export const getCompetitionUsers = async (competitionId) => {
-    throw {
-        response: {
-            status: 501,
-            data: {
-                error: 'contest participants endpoint is not available in rebuild backend'
-            }
+    return await axios.get(`${apiUrl}/contests/${competitionId}/participants`, {
+        headers: {
+            ...authHeaders()
         }
-    };
+    });
 }
 
 // 获取指定竞赛的所有题目
 export const getCompetitionProblems = async (competitionId) => {
-    throw {
-        response: {
-            status: 501,
-            data: {
-                error: 'contest problems endpoint is not available in rebuild backend'
-            }
+    return await axios.get(`${apiUrl}/contests/${competitionId}/problems`, {
+        headers: {
+            ...authHeaders()
         }
-    };
+    });
+}
+
+// 管理员替换竞赛题目绑定
+export const replaceCompetitionProblems = async (competitionId, items) => {
+    return await axios.put(`${apiUrl}/contests/${competitionId}/problems`, {
+        items
+    }, {
+        headers: {
+            ...authHeaders()
+        }
+    });
 }

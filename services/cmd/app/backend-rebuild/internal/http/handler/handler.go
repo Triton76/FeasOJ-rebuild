@@ -13,20 +13,24 @@ import (
 )
 
 type Handlers struct {
-	Auth                ports.AuthService
-	Users               ports.UsersService
-	Classes             ports.ClassesService
-	Problems            ports.ProblemsService
-	Testcases           ports.TestcasesService
-	Competitions        ports.CompetitionsService
-	Discussions         ports.DiscussionsService
-	SubmitRecords       ports.SubmitRecordsService
-	Admin               ports.AdminService
-	JudgeWritebackToken string
+	Auth                 ports.AuthService
+	Users                ports.UsersService
+	Classes              ports.ClassesService
+	Problems             ports.ProblemsService
+	Testcases            ports.TestcasesService
+	Competitions         ports.CompetitionsService
+	Discussions          ports.DiscussionsService
+	SubmitRecords        ports.SubmitRecordsService
+	Admin                ports.AdminService
+	JudgeWritebackToken  string
+	AvatarUploadMaxBytes int64
 }
 
 func New(h Handlers) Handlers {
 	h.JudgeWritebackToken = strings.TrimSpace(h.JudgeWritebackToken)
+	if h.AvatarUploadMaxBytes <= 0 {
+		h.AvatarUploadMaxBytes = 2 * 1024 * 1024
+	}
 	return h
 }
 

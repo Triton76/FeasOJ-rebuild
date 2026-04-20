@@ -20,6 +20,10 @@ dsn = "root:pass@tcp(localhost:3306)/feasoj"
 
 [jwt]
 secret = "toml-secret"
+
+[avatar_storage]
+dir = "/tmp/avatars"
+max_bytes = 12345
 `), 0644); err != nil {
 		t.Fatalf("write toml config failed: %v", err)
 	}
@@ -37,6 +41,12 @@ secret = "toml-secret"
 	}
 	if cfg.JWTSecret != "toml-secret" {
 		t.Fatalf("unexpected jwt secret: %s", cfg.JWTSecret)
+	}
+	if cfg.AvatarUploadDir != "/tmp/avatars" {
+		t.Fatalf("unexpected avatar dir: %s", cfg.AvatarUploadDir)
+	}
+	if cfg.AvatarUploadMaxBytes != 12345 {
+		t.Fatalf("unexpected avatar max bytes: %d", cfg.AvatarUploadMaxBytes)
 	}
 }
 

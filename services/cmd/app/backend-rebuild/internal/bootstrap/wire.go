@@ -18,6 +18,7 @@ import (
 	testcasesrepo "FeasOJ/app/backend-rebuild/internal/repository/testcases"
 	usersrepo "FeasOJ/app/backend-rebuild/internal/repository/users"
 	"FeasOJ/app/backend-rebuild/internal/scheduler"
+	avatarstorage "FeasOJ/app/backend-rebuild/internal/storage/avatar"
 	adminusecase "FeasOJ/app/backend-rebuild/internal/usecase/admin"
 	authusecase "FeasOJ/app/backend-rebuild/internal/usecase/auth"
 	classesusecase "FeasOJ/app/backend-rebuild/internal/usecase/classes"
@@ -67,6 +68,19 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			submitRecordsRepository := submitrecordsrepo.NewRepository(db)
 			testcasesRepository := testcasesrepo.NewRepository(db)
 
+			var userOptions usersusecase.Options
+			userOptions.AvatarUploadEnabled = cfg.EnableAvatarUpload
+			userOptions.AvatarUploadMaxBytes = cfg.AvatarUploadMaxBytes
+			if cfg.EnableAvatarUpload {
+				avatarStore, err := avatarstorage.NewLocalStorage(cfg.AvatarUploadDir)
+				if err != nil {
+					log.Printf("[backend-rebuild] avatar storage init failed, avatar upload disabled: %v", err)
+					userOptions.AvatarUploadEnabled = false
+				} else {
+					userOptions.AvatarStorage = avatarStore
+				}
+			}
+
 			submissionQueue := queue.NewMemorySubmissionQueue()
 			if cfg.EnableRabbitMQQueue && cfg.RabbitMQURL != "" {
 				if rabbitQueue, err := queue.NewRabbitMQSubmissionQueue(queue.RabbitMQConfig{
@@ -85,7 +99,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			}
 
 			services.Auth = authusecase.NewService(authRepository, cfg.JWTSecret, cfg.JWTIssuer, jwtTTL, cfg.EnablePasswordReset)
-			services.Users = usersusecase.NewService(usersRepository)
+			services.Users = usersusecase.NewService(usersRepository, userOptions)
 			services.Problems = problemsusecase.NewService(problemsRepository)
 			services.Admin = adminusecase.NewService(adminRepository)
 			services.Classes = classesusecase.NewService(classesRepository)
@@ -102,16 +116,17 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 	}
 
 	h := handler.New(handler.Handlers{
-		Auth:                services.Auth,
-		Users:               services.Users,
-		Classes:             services.Classes,
-		Problems:            services.Problems,
-		Testcases:           services.Testcases,
-		Competitions:        services.Competitions,
-		Discussions:         services.Discussions,
-		SubmitRecords:       services.SubmitRecords,
-		Admin:               services.Admin,
-		JudgeWritebackToken: cfg.JudgeWritebackToken,
+		Auth:                 services.Auth,
+		Users:                services.Users,
+		Classes:              services.Classes,
+		Problems:             services.Problems,
+		Testcases:            services.Testcases,
+		Competitions:         services.Competitions,
+		Discussions:          services.Discussions,
+		SubmitRecords:        services.SubmitRecords,
+		Admin:                services.Admin,
+		JudgeWritebackToken:  cfg.JudgeWritebackToken,
+		AvatarUploadMaxBytes: cfg.AvatarUploadMaxBytes,
 	})
 
 	router.Register(g, h, cfg)

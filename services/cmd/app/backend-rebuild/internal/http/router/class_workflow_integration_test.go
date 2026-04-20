@@ -69,7 +69,9 @@ func (s *fakeClassService) CreateClass(context.Context, ports.CreateClassRequest
 func (s *fakeClassService) UpdateClass(context.Context, ports.UpdateClassRequest) (ports.ClassDTO, error) {
 	return ports.ClassDTO{}, ports.ErrNotImplemented
 }
-func (s *fakeClassService) ArchiveClass(context.Context, string, string) error { return ports.ErrNotImplemented }
+func (s *fakeClassService) ArchiveClass(context.Context, string, string) error {
+	return ports.ErrNotImplemented
+}
 
 func (s *fakeClassService) ApplyJoinClass(ctx context.Context, req ports.ApplyJoinClassRequest) (ports.ClassMembershipDTO, error) {
 	if req.ClassCode != "CLS-1" {

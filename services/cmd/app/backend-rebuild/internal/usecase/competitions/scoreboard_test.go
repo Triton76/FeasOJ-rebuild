@@ -51,6 +51,18 @@ func (r *fakeScoreboardRepo) CreateParticipant(ctx context.Context, p Participan
 	return p, nil
 }
 
+func (r *fakeScoreboardRepo) GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (Participant, error) {
+	return Participant{}, ports.ErrNotFound
+}
+
+func (r *fakeScoreboardRepo) ListParticipantsByContest(ctx context.Context, contestID int64) ([]ParticipantDetail, error) {
+	return []ParticipantDetail{}, nil
+}
+
+func (r *fakeScoreboardRepo) UpdateParticipantStatus(ctx context.Context, contestID int64, userID, fromStatus, toStatus string, updatedAt time.Time) (Participant, error) {
+	return Participant{}, ports.ErrConflict
+}
+
 func (r *fakeScoreboardRepo) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error) {
 	resp := make([]ScoreboardSubmission, 0, len(r.submissions))
 	for _, item := range r.submissions {
@@ -270,6 +282,19 @@ func (r *fakeVisibilityRepo) CountExistingProblems(ctx context.Context, problemI
 func (r *fakeVisibilityRepo) CreateParticipant(ctx context.Context, p Participant) (Participant, error) {
 	return p, nil
 }
+
+func (r *fakeVisibilityRepo) GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (Participant, error) {
+	return Participant{}, ports.ErrNotFound
+}
+
+func (r *fakeVisibilityRepo) ListParticipantsByContest(ctx context.Context, contestID int64) ([]ParticipantDetail, error) {
+	return []ParticipantDetail{}, nil
+}
+
+func (r *fakeVisibilityRepo) UpdateParticipantStatus(ctx context.Context, contestID int64, userID, fromStatus, toStatus string, updatedAt time.Time) (Participant, error) {
+	return Participant{}, ports.ErrConflict
+}
+
 func (r *fakeVisibilityRepo) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error) {
 	return nil, nil
 }

@@ -75,16 +75,16 @@ func (s *Service) Register(ctx context.Context, req ports.RegisterRequest) (port
 
 	now := time.Now().UTC()
 	user := User{
-		ID:           uuid.NewString(),
-		Username:     username,
-		Email:        email,
-		PasswordHash: hash,
+		ID:                uuid.NewString(),
+		Username:          username,
+		Email:             email,
+		PasswordHash:      hash,
 		PasswordUpdatedAt: now,
-		Role:         "student",
-		Score:        0,
-		Status:       "active",
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Role:              "student",
+		Score:             0,
+		Status:            "active",
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	createdUser, err := s.repo.Create(ctx, user)
@@ -160,7 +160,12 @@ func (s *Service) Verify(ctx context.Context) (ports.VerifyResponse, error) {
 		return ports.VerifyResponse{}, ports.ErrUnauthorized
 	}
 
-	return ports.VerifyResponse{User: toUserDTO(user)}, nil
+	return ports.VerifyResponse{
+		User: toUserDTO(user),
+		Capabilities: ports.AuthCapabilities{
+			PasswordResetEnabled: s.passwordResetEnabled,
+		},
+	}, nil
 }
 
 func (s *Service) SendPasswordResetCode(ctx context.Context, req ports.PasswordResetCodeRequest) (ports.PasswordResetCodeResponse, error) {

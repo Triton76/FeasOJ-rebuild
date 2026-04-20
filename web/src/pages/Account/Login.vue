@@ -5,6 +5,7 @@ import { loginRequest, verifyUserInfo } from '../../utils/api/auth.js';
 import { showAlert } from '../../utils/alert.js';
 import { useI18n } from 'vue-i18n';
 import { jwtDecode } from "jwt-decode";
+import { passwordResetEnabled } from '../../utils/account.js';
 
 const { t } = useI18n();
 
@@ -31,6 +32,9 @@ const login = async () => {
     const response = await verifyUserInfo(forms.username, token);
     localStorage.setItem('username', response.data.data.username);
     localStorage.setItem('user_id', response.data.data.id);
+    const resetEnabled = Boolean(response.data.capabilities?.password_reset_enabled);
+    localStorage.setItem('cap_password_reset_enabled', String(resetEnabled));
+    passwordResetEnabled.value = resetEnabled;
     showAlert(loginResponse.data.message, "/");
     return;
   } catch (error) {
@@ -42,7 +46,11 @@ const login = async () => {
 }
 
 const onForgotPassword = () => {
-  showAlert(t('message.failed') + ': reset password is disabled in rebuild backend', '');
+  if (passwordResetEnabled.value) {
+    window.location = '#/reset';
+    return;
+  }
+  showAlert(t('message.failed') + ': reset password is disabled in current environment', '');
 }
 </script>
 

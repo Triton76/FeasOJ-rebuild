@@ -142,12 +142,12 @@ func (s *Service) UpdateUserRole(ctx context.Context, req ports.UpdateUserRoleRe
 
 func emitAdminAudit(action, actorUserID, targetUserID string, oldValues, newValues map[string]any) {
 	entry := map[string]any{
-		"action":     action,
-		"actor":      strings.TrimSpace(actorUserID),
+		"action":      action,
+		"actor":       strings.TrimSpace(actorUserID),
 		"target_user": targetUserID,
-		"old":        oldValues,
-		"new":        newValues,
-		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		"old":         oldValues,
+		"new":         newValues,
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 	}
 	b, err := json.Marshal(entry)
 	if err != nil {

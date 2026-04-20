@@ -50,17 +50,29 @@ func (r *UserRepository) GetByID(ctx context.Context, userID string) (usersuseca
 	return fromRow(row), nil
 }
 
-func (r *UserRepository) UpdateProfile(ctx context.Context, userID, avatar, synopsis string, updatedAt time.Time) (bool, error) {
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID string, avatar, synopsis *string, updatedAt time.Time) (bool, error) {
 	updates := map[string]any{
-		"avatar":     avatar,
-		"synopsis":   synopsis,
 		"updated_at": updatedAt,
+	}
+	if avatar != nil {
+		updates["avatar"] = *avatar
+	}
+	if synopsis != nil {
+		updates["synopsis"] = *synopsis
 	}
 	result := r.db.WithContext(ctx).Model(&userRow{}).Where("id = ?", userID).Updates(updates)
 	if result.Error != nil {
 		return false, result.Error
 	}
-	return result.RowsAffected > 0, nil
+	if result.RowsAffected > 0 {
+		return true, nil
+	}
+
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&userRow{}).Where("id = ?", userID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *UserRepository) ListRanking(ctx context.Context, offset, limit int) ([]usersusecase.User, error) {

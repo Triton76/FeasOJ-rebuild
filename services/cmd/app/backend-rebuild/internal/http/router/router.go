@@ -13,6 +13,10 @@ import (
 )
 
 func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
+	if cfg.AvatarUploadDir != "" {
+		r.StaticFS("/api/v1/avatar", http.Dir(cfg.AvatarUploadDir))
+	}
+
 	api := r.Group("/api/v1")
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -28,6 +32,7 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/auth/verify", h.Verify)
 
 	authed.GET("/users/:user_id", h.GetProfile)
+	authed.POST("/profile/avatar/upload", h.UploadAvatar)
 	authed.PATCH("/profile", h.UpdateProfile)
 	authed.GET("/ranking", h.ListRanking)
 
@@ -57,6 +62,9 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/contests/:contest_id", h.GetContest)
 	authed.GET("/contests/:contest_id/problems", h.ListContestProblems)
 	authed.PUT("/contests/:contest_id/problems", h.ReplaceContestProblems)
+	authed.GET("/contests/:contest_id/participant/self", h.GetContestMembership)
+	authed.GET("/contests/:contest_id/participants", h.ListContestParticipants)
+	authed.DELETE("/contests/:contest_id/participant/self", h.QuitContest)
 	if cfg.EnableScoreboard {
 		authed.GET("/contests/:contest_id/scoreboard", h.GetScoreboard)
 	}
@@ -66,8 +74,11 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 
 	authed.GET("/discussions", h.ListDiscussions)
 	authed.GET("/discussions/:discussion_id", h.GetDiscussion)
+	authed.GET("/discussions/:discussion_id/comments", h.ListComments)
 	authed.POST("/discussions", h.CreateDiscussion)
+	authed.DELETE("/discussions/:discussion_id", h.DeleteDiscussion)
 	authed.POST("/comments", h.CreateComment)
+	authed.DELETE("/comments/:comment_id", h.DeleteComment)
 
 	authed.POST("/submit-records", h.CreateSubmission)
 	authed.GET("/submit-records", h.ListSubmissions)

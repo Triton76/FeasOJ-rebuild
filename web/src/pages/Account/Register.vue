@@ -21,7 +21,7 @@ const countdown = ref(60);
 
 // 校验表单内容并注册
 const register = async () => {
-  if (formState.username === "" || formState.userEmail === "" || formState.password === "" || formState.confirmPassword === "" || formState.vcode === "") {
+  if (formState.username === "" || formState.userEmail === "" || formState.password === "" || formState.confirmPassword === "") {
     showAlert(t("message.formCheckfailed") + "!", "");
     return;
   }
@@ -35,7 +35,7 @@ const register = async () => {
   }
   try {
     networkloading.value = true;
-    const response = await registerRequest(formState.username, formState.password, formState.userEmail, formState.vcode);
+    const response = await registerRequest(formState.username, formState.password, formState.userEmail, formState.vcode || '');
     networkloading.value = false;
     showAlert(response.data.message, "/login");
     return;
@@ -103,7 +103,7 @@ const getCaptcha = async () => {
         :label="$t('message.username')" />
       <v-text-field v-model="formState.userEmail" :rules="[rules.userEmail.required, rules.userEmail.email]"
         rounded="xl" variant="solo-filled" :label="$t('message.email')" />
-      <v-text-field v-model="formState.vcode" :rules="[rules.vcode.required]" rounded="xl" variant="solo-filled"
+      <v-text-field v-model="formState.vcode" :rules="[]" rounded="xl" variant="solo-filled"
         :label="$t('message.vCode')">
         <template v-slot:append>
           <v-btn @click="getCaptcha" :disabled="isButtonDisabled" size="25" icon>

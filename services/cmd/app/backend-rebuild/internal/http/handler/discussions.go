@@ -77,3 +77,44 @@ func (h Handlers) CreateComment(c *gin.Context) {
 	}
 	ok(c, resp)
 }
+
+func (h Handlers) ListComments(c *gin.Context) {
+	var req ports.CommentsQuery
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.DiscussionID = c.Param("discussion_id")
+	resp, err := h.Discussions.ListComments(c.Request.Context(), req)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) DeleteDiscussion(c *gin.Context) {
+	req := ports.DeleteDiscussionRequest{
+		DiscussionID: c.Param("discussion_id"),
+		ActorUserID:  c.GetString("auth_user_id"),
+		ActorRole:    c.GetString("auth_role"),
+	}
+	if err := h.Discussions.DeleteDiscussion(c.Request.Context(), req); err != nil {
+		fail(c, err)
+		return
+	}
+	noContent(c)
+}
+
+func (h Handlers) DeleteComment(c *gin.Context) {
+	req := ports.DeleteCommentRequest{
+		CommentID:   c.Param("comment_id"),
+		ActorUserID: c.GetString("auth_user_id"),
+		ActorRole:   c.GetString("auth_role"),
+	}
+	if err := h.Discussions.DeleteComment(c.Request.Context(), req); err != nil {
+		fail(c, err)
+		return
+	}
+	noContent(c)
+}

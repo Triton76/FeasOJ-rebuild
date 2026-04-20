@@ -92,6 +92,64 @@ func (r *Repository) CreateComment(ctx context.Context, c discussionsusecase.Com
 	return r.toComment(ctx, row), nil
 }
 
+func (r *Repository) ListCommentsByDiscussionID(ctx context.Context, discussionID string, offset, limit int) ([]discussionsusecase.Comment, error) {
+	var rows []commentRow
+	err := r.db.WithContext(ctx).
+		Where("discussion_id = ?", discussionID).
+		Order("created_at ASC").
+		Offset(offset).
+		Limit(limit).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]discussionsusecase.Comment, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, r.toComment(ctx, row))
+	}
+	return resp, nil
+}
+
+func (r *Repository) GetCommentByID(ctx context.Context, commentID string) (discussionsusecase.Comment, error) {
+	var row commentRow
+	err := r.db.WithContext(ctx).Where("id = ?", commentID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return discussionsusecase.Comment{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return discussionsusecase.Comment{}, err
+	}
+	return r.toComment(ctx, row), nil
+}
+
+func (r *Repository) DeleteDiscussion(ctx context.Context, discussionID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("discussion_id = ?", discussionID).Delete(&commentRow{}).Error; err != nil {
+			return err
+		}
+		res := tx.Where("id = ?", discussionID).Delete(&discussionRow{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ports.ErrNotFound
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteComment(ctx context.Context, commentID string) error {
+	res := r.db.WithContext(ctx).Where("id = ?", commentID).Delete(&commentRow{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ports.ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) toDiscussion(ctx context.Context, row discussionRow) discussionsusecase.Discussion {
 	u := r.getUser(ctx, row.UserID)
 	return discussionsusecase.Discussion{ID: row.ID, Title: row.Title, Content: row.Content, UserID: row.UserID, Username: u.Username, Avatar: u.Avatar, CreatedAt: row.CreatedAt}

@@ -62,6 +62,18 @@ func (r *fakeBindingRepo) CreateParticipant(ctx context.Context, p Participant) 
 	return p, nil
 }
 
+func (r *fakeBindingRepo) GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (Participant, error) {
+	return Participant{}, ports.ErrNotFound
+}
+
+func (r *fakeBindingRepo) ListParticipantsByContest(ctx context.Context, contestID int64) ([]ParticipantDetail, error) {
+	return []ParticipantDetail{}, nil
+}
+
+func (r *fakeBindingRepo) UpdateParticipantStatus(ctx context.Context, contestID int64, userID, fromStatus, toStatus string, updatedAt time.Time) (Participant, error) {
+	return Participant{}, ports.ErrConflict
+}
+
 func (r *fakeBindingRepo) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]ScoreboardSubmission, error) {
 	return nil, nil
 }

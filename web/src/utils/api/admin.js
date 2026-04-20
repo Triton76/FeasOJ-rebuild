@@ -94,16 +94,18 @@ export const unbanUser = async (uid) => {
 
 // 晋升用户
 export const promoteUser = async (uid) => {
-    return {
-        data: { message: 'admin role update is not available in rebuild backend' }
-    }
+    return await axios.patch(`${apiUrl}/admin/users/role`, {
+        user_id: uid,
+        role: 'admin'
+    }, reqConfig())
 }
 
 // 降级用户
 export const demoteUser = async (uid) => {
-    return {
-        data: { message: 'admin role update is not available in rebuild backend' }
-    }
+    return await axios.patch(`${apiUrl}/admin/users/role`, {
+        user_id: uid,
+        role: 'student'
+    }, reqConfig())
 }
 
 // 管理员获取题目列表

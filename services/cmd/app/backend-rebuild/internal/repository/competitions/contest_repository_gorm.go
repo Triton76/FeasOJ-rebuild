@@ -63,7 +63,17 @@ type scoreboardSubmissionRow struct {
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
-func (participantRow) TableName() string { return "contest_participants" }
+type participantWithUserRow struct {
+	ID        string     `gorm:"column:id"`
+	ContestID int64      `gorm:"column:contest_id"`
+	UserID    string     `gorm:"column:user_id"`
+	Status    string     `gorm:"column:status"`
+	JoinedAt  *time.Time `gorm:"column:joined_at"`
+	Username  string     `gorm:"column:username"`
+	Avatar    string     `gorm:"column:avatar"`
+}
+
+func (participantRow) TableName() string    { return "contest_participants" }
 func (contestProblemRow) TableName() string { return "contest_problems" }
 
 type Repository struct{ db *gorm.DB }
@@ -270,6 +280,64 @@ func (r *Repository) CreateParticipant(ctx context.Context, p competitionsusecas
 		return competitionsusecase.Participant{}, err
 	}
 	return competitionsusecase.Participant{ID: row.ID, ContestID: row.ContestID, UserID: row.UserID, Status: row.Status, JoinedAt: row.JoinedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (competitionsusecase.Participant, error) {
+	var row participantRow
+	err := r.db.WithContext(ctx).Where("contest_id = ? AND user_id = ?", contestID, userID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return competitionsusecase.Participant{}, ports.ErrNotFound
+	}
+	if err != nil {
+		return competitionsusecase.Participant{}, err
+	}
+	return competitionsusecase.Participant{ID: row.ID, ContestID: row.ContestID, UserID: row.UserID, Status: row.Status, JoinedAt: row.JoinedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID int64) ([]competitionsusecase.ParticipantDetail, error) {
+	var rows []participantWithUserRow
+	err := r.db.WithContext(ctx).
+		Table("contest_participants AS cp").
+		Select("cp.id, cp.contest_id, cp.user_id, cp.status, cp.joined_at, u.username, u.avatar").
+		Joins("JOIN users AS u ON u.id = cp.user_id").
+		Where("cp.contest_id = ?", contestID).
+		Order("cp.joined_at ASC, cp.created_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]competitionsusecase.ParticipantDetail, 0, len(rows))
+	for _, row := range rows {
+		resp = append(resp, competitionsusecase.ParticipantDetail{
+			ID:        row.ID,
+			ContestID: row.ContestID,
+			UserID:    row.UserID,
+			Username:  row.Username,
+			Avatar:    row.Avatar,
+			Status:    row.Status,
+			JoinedAt:  row.JoinedAt,
+		})
+	}
+	return resp, nil
+}
+
+func (r *Repository) UpdateParticipantStatus(ctx context.Context, contestID int64, userID, fromStatus, toStatus string, updatedAt time.Time) (competitionsusecase.Participant, error) {
+	updates := map[string]any{
+		"status":     toStatus,
+		"updated_at": updatedAt,
+	}
+	res := r.db.WithContext(ctx).
+		Model(&participantRow{}).
+		Where("contest_id = ? AND user_id = ? AND status = ?", contestID, userID, fromStatus).
+		Updates(updates)
+	if res.Error != nil {
+		return competitionsusecase.Participant{}, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return competitionsusecase.Participant{}, ports.ErrConflict
+	}
+	return r.GetParticipantByContestAndUser(ctx, contestID, userID)
 }
 
 func (r *Repository) ListScoreboardSubmissions(ctx context.Context, contestID int64, before time.Time) ([]competitionsusecase.ScoreboardSubmission, error) {

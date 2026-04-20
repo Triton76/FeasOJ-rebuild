@@ -16,6 +16,7 @@ type AuthService interface {
 
 type UsersService interface {
 	GetProfile(ctx context.Context, userID string) (UserDTO, error)
+	UploadAvatar(ctx context.Context, userID string, req UploadAvatarRequest) (AvatarUploadResponse, error)
 	UpdateProfile(ctx context.Context, userID string, req UpdateProfileRequest) (UserDTO, error)
 	ListRanking(ctx context.Context, req RankingQuery) ([]RankingItem, error)
 }
@@ -55,6 +56,9 @@ type CompetitionsService interface {
 	DeleteContest(ctx context.Context, req DeleteContestRequest) error
 	ListContestProblems(ctx context.Context, req ContestProblemsQuery) ([]ContestProblemBindingDTO, error)
 	ReplaceContestProblems(ctx context.Context, req ReplaceContestProblemsRequest) ([]ContestProblemBindingDTO, error)
+	GetContestMembership(ctx context.Context, req ContestMembershipQuery) (ContestMembershipDTO, error)
+	ListContestParticipants(ctx context.Context, req ContestParticipantsQuery) ([]ContestParticipantDetailDTO, error)
+	QuitContest(ctx context.Context, req QuitContestRequest) (ContestParticipantDTO, error)
 	JoinContest(ctx context.Context, req JoinContestRequest) (ContestParticipantDTO, error)
 	GetScoreboard(ctx context.Context, req ContestScoreboardQuery) (ContestScoreboardResponse, error)
 }
@@ -64,6 +68,9 @@ type DiscussionsService interface {
 	GetDiscussion(ctx context.Context, discussionID string) (DiscussionDTO, error)
 	CreateDiscussion(ctx context.Context, req CreateDiscussionRequest) (DiscussionDTO, error)
 	CreateComment(ctx context.Context, req CreateCommentRequest) (CommentDTO, error)
+	ListComments(ctx context.Context, req CommentsQuery) ([]CommentDTO, error)
+	DeleteDiscussion(ctx context.Context, req DeleteDiscussionRequest) error
+	DeleteComment(ctx context.Context, req DeleteCommentRequest) error
 }
 
 type SubmitRecordsService interface {
@@ -96,7 +103,12 @@ type LoginResponse struct {
 }
 
 type VerifyResponse struct {
-	User UserDTO `json:"user"`
+	User         UserDTO          `json:"user"`
+	Capabilities AuthCapabilities `json:"capabilities"`
+}
+
+type AuthCapabilities struct {
+	PasswordResetEnabled bool `json:"password_reset_enabled"`
 }
 
 type PasswordResetCodeRequest struct {
@@ -125,8 +137,20 @@ type UserDTO struct {
 }
 
 type UpdateProfileRequest struct {
-	Avatar   string `json:"avatar"`
-	Synopsis string `json:"synopsis"`
+	Avatar   *string `json:"avatar"`
+	Synopsis *string `json:"synopsis"`
+}
+
+type UploadAvatarRequest struct {
+	Filename    string
+	ContentType string
+	Content     []byte
+}
+
+type AvatarUploadResponse struct {
+	Avatar      string `json:"avatar"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
 }
 
 type RankingQuery struct {
@@ -379,10 +403,10 @@ type ContestProblemsQuery struct {
 }
 
 type ReplaceContestProblemsRequest struct {
-	ContestID   int64                     `json:"contest_id"`
+	ContestID   int64                         `json:"contest_id"`
 	Items       []ContestProblemBindingUpsert `json:"items"`
-	ActorUserID string                    `json:"-"`
-	ActorRole   string                    `json:"-"`
+	ActorUserID string                        `json:"-"`
+	ActorRole   string                        `json:"-"`
 }
 
 type ContestProblemBindingUpsert struct {
@@ -423,6 +447,41 @@ type ContestParticipantDTO struct {
 	Status    string `json:"status"`
 }
 
+type ContestParticipantDetailDTO struct {
+	ID        string `json:"id"`
+	ContestID int64  `json:"contest_id"`
+	UserID    string `json:"user_id"`
+	Username  string `json:"username"`
+	Avatar    string `json:"avatar"`
+	Status    string `json:"status"`
+	JoinedAt  string `json:"joined_at"`
+}
+
+type ContestMembershipQuery struct {
+	ContestID   int64  `json:"contest_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type ContestMembershipDTO struct {
+	ContestID int64  `json:"contest_id"`
+	UserID    string `json:"user_id"`
+	Joined    bool   `json:"joined"`
+	Status    string `json:"status"`
+}
+
+type ContestParticipantsQuery struct {
+	ContestID   int64  `json:"contest_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
+type QuitContestRequest struct {
+	ContestID   int64  `json:"contest_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
+}
+
 type DiscussionsQuery struct {
 	Page  int `form:"page"`
 	Limit int `form:"limit"`
@@ -459,6 +518,24 @@ type CreateCommentRequest struct {
 	DiscussionID string `json:"discussion_id"`
 	Content      string `json:"content"`
 	UserID       string `json:"user_id"`
+}
+
+type CommentsQuery struct {
+	DiscussionID string `json:"discussion_id"`
+	Page         int    `form:"page"`
+	Limit        int    `form:"limit"`
+}
+
+type DeleteDiscussionRequest struct {
+	DiscussionID string `json:"discussion_id"`
+	ActorUserID  string `json:"-"`
+	ActorRole    string `json:"-"`
+}
+
+type DeleteCommentRequest struct {
+	CommentID   string `json:"comment_id"`
+	ActorUserID string `json:"-"`
+	ActorRole   string `json:"-"`
 }
 
 type CreateSubmissionRequest struct {

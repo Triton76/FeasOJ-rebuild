@@ -9,18 +9,18 @@ import (
 )
 
 type User struct {
-	ID           string
-	Username     string
-	Email        string
-	PasswordHash string
+	ID                string
+	Username          string
+	Email             string
+	PasswordHash      string
 	PasswordUpdatedAt time.Time
-	Role         string
-	Avatar       string
-	Synopsis     string
-	Score        int
-	Status       string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	Role              string
+	Avatar            string
+	Synopsis          string
+	Score             int
+	Status            string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type UserRepository interface {

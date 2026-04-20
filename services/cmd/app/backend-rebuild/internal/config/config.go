@@ -20,10 +20,12 @@ const defaultJWTIssuer = "feasoj-backend-rebuild"
 const defaultJWTExpireHours = "2"
 const defaultContestStatusScanSeconds = 30
 const defaultConfigPath = "app/backend-rebuild/config.yaml"
+const defaultAvatarUploadDir = "app/backend-rebuild/var/avatars"
+const defaultAvatarUploadMaxBytes int64 = 2 * 1024 * 1024
 
 type Config struct {
-	ConfigPath                 string
-	ConfigSource               string
+	ConfigPath                string
+	ConfigSource              string
 	Addr                      string
 	MySQLDSN                  string
 	JWTSecret                 string
@@ -38,12 +40,15 @@ type Config struct {
 	EnableEmbeddedJudgeWorker bool
 	EnableClassWorkflowV2     bool
 	EnablePasswordReset       bool
+	EnableAvatarUpload        bool
 	RabbitMQURL               string
 	RabbitMQExchange          string
 	RabbitMQMainQueue         string
 	RabbitMQRetryQueue        string
 	RabbitMQDLQ               string
 	RabbitMQWorkerPrefetch    int
+	AvatarUploadDir           string
+	AvatarUploadMaxBytes      int64
 }
 
 type fileConfig struct {
@@ -72,7 +77,12 @@ type fileConfig struct {
 		EnableEmbeddedJudgeWorker *bool `yaml:"enable_embedded_judge_worker"`
 		EnableClassWorkflowV2     *bool `yaml:"enable_class_workflow_v2"`
 		EnablePasswordReset       *bool `yaml:"enable_password_reset"`
+		EnableAvatarUpload        *bool `yaml:"enable_avatar_upload"`
 	} `yaml:"feature_flags"`
+	AvatarStorage struct {
+		Dir      string `yaml:"dir"`
+		MaxBytes int64  `yaml:"max_bytes"`
+	} `yaml:"avatar_storage"`
 	RabbitMQ struct {
 		URL        string `yaml:"url"`
 		Exchange   string `yaml:"exchange"`
@@ -97,11 +107,14 @@ func Load() (Config, error) {
 		EnableEmbeddedJudgeWorker: true,
 		EnableClassWorkflowV2:     true,
 		EnablePasswordReset:       false,
+		EnableAvatarUpload:        true,
 		RabbitMQExchange:          "judge.submission.exchange",
 		RabbitMQMainQueue:         "judge.submission.main",
 		RabbitMQRetryQueue:        "judge.submission.retry",
 		RabbitMQDLQ:               "judge.submission.dlq",
 		RabbitMQWorkerPrefetch:    1,
+		AvatarUploadDir:           defaultAvatarUploadDir,
+		AvatarUploadMaxBytes:      defaultAvatarUploadMaxBytes,
 	}
 
 	if err := loadFromFile(&cfg); err != nil {
@@ -203,6 +216,15 @@ func loadFromYAML(cfg *Config, path string) error {
 	if fc.FeatureFlags.EnablePasswordReset != nil {
 		cfg.EnablePasswordReset = *fc.FeatureFlags.EnablePasswordReset
 	}
+	if fc.FeatureFlags.EnableAvatarUpload != nil {
+		cfg.EnableAvatarUpload = *fc.FeatureFlags.EnableAvatarUpload
+	}
+	if fc.AvatarStorage.Dir != "" {
+		cfg.AvatarUploadDir = fc.AvatarStorage.Dir
+	}
+	if fc.AvatarStorage.MaxBytes > 0 {
+		cfg.AvatarUploadMaxBytes = fc.AvatarStorage.MaxBytes
+	}
 	if fc.RabbitMQ.URL != "" {
 		cfg.RabbitMQURL = fc.RabbitMQ.URL
 	}
@@ -261,7 +283,12 @@ func loadFromTOML(cfg *Config, path string) error {
 			EnableEmbeddedJudgeWorker *bool `toml:"enable_embedded_judge_worker"`
 			EnableClassWorkflowV2     *bool `toml:"enable_class_workflow_v2"`
 			EnablePasswordReset       *bool `toml:"enable_password_reset"`
+			EnableAvatarUpload        *bool `toml:"enable_avatar_upload"`
 		} `toml:"feature_flags"`
+		AvatarStorage struct {
+			Dir      string `toml:"dir"`
+			MaxBytes int64  `toml:"max_bytes"`
+		} `toml:"avatar_storage"`
 		RabbitMQ struct {
 			URL        string `toml:"url"`
 			Exchange   string `toml:"exchange"`
@@ -318,6 +345,15 @@ func loadFromTOML(cfg *Config, path string) error {
 	}
 	if fc.FeatureFlags.EnablePasswordReset != nil {
 		cfg.EnablePasswordReset = *fc.FeatureFlags.EnablePasswordReset
+	}
+	if fc.FeatureFlags.EnableAvatarUpload != nil {
+		cfg.EnableAvatarUpload = *fc.FeatureFlags.EnableAvatarUpload
+	}
+	if fc.AvatarStorage.Dir != "" {
+		cfg.AvatarUploadDir = fc.AvatarStorage.Dir
+	}
+	if fc.AvatarStorage.MaxBytes > 0 {
+		cfg.AvatarUploadMaxBytes = fc.AvatarStorage.MaxBytes
 	}
 	if fc.RabbitMQ.URL != "" {
 		cfg.RabbitMQURL = fc.RabbitMQ.URL
@@ -401,6 +437,20 @@ func loadFromEnv(cfg *Config) {
 		cfg.EnablePasswordReset = v == "1" || v == "true" || v == "TRUE"
 		envOverride = true
 	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_AVATAR_UPLOAD"); v != "" {
+		cfg.EnableAvatarUpload = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
+	}
+	if v := os.Getenv("BACKEND_REBUILD_AVATAR_UPLOAD_DIR"); v != "" {
+		cfg.AvatarUploadDir = v
+		envOverride = true
+	}
+	if v := os.Getenv("BACKEND_REBUILD_AVATAR_UPLOAD_MAX_BYTES"); v != "" {
+		envOverride = true
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			cfg.AvatarUploadMaxBytes = n
+		}
+	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_URL"); v != "" {
 		cfg.RabbitMQURL = v
 		envOverride = true
@@ -451,6 +501,12 @@ func loadFromEnv(cfg *Config) {
 	}
 	if cfg.RabbitMQWorkerPrefetch <= 0 {
 		cfg.RabbitMQWorkerPrefetch = 1
+	}
+	if cfg.AvatarUploadDir == "" {
+		cfg.AvatarUploadDir = defaultAvatarUploadDir
+	}
+	if cfg.AvatarUploadMaxBytes <= 0 {
+		cfg.AvatarUploadMaxBytes = defaultAvatarUploadMaxBytes
 	}
 	if envOverride {
 		if cfg.ConfigSource == "" {

@@ -50,12 +50,13 @@ export const loginRequest = async (username, password) => {
 
 // 获取验证码
 export const getCaptchaCode = async (email,iscreate) => {
-    // Rebuild 后端当前阶段不提供验证码接口，保留函数签名避免页面崩溃
-    return {
-        data: {
-            message: 'captcha endpoint is not available in rebuild backend'
+    return await axios.post(`${apiUrl}/auth/password/reset/code`, {
+        email: email
+    }, {
+        headers: {
+            "Accept-Language": language.value
         }
-    }
+    })
 }
 
 // 验证个人用户信息
@@ -71,6 +72,7 @@ export const verifyUserInfo = async (username, token) => {
         data: {
             ...resp.data,
             data: resp.data?.data?.user || resp.data?.data || {},
+            capabilities: resp.data?.data?.capabilities || {},
             message: resp.data?.message || 'success'
         }
     }
@@ -89,10 +91,13 @@ export const getUserInfo = async (username) => {
 
 // 修改密码
 export const updatePassword = async (email, vcode, newPassword) => {
-    // 决议已下线重置密码能力，这里返回可读提示
-    return {
-        data: {
-            message: 'reset password is disabled in rebuild backend'
+    return await axios.post(`${apiUrl}/auth/password/reset`, {
+        email: email,
+        code: vcode,
+        new_password: newPassword,
+    }, {
+        headers: {
+            "Accept-Language": language.value
         }
-    }
+    })
 }

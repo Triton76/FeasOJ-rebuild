@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { token } from '../../utils/account';
 import { showAlert } from '../../utils/alert';
 import { useRoute, useRouter } from 'vue-router';
-import { getCompetitionById, quitCompetition } from '../../utils/api/competitions';
+import { getCompetitionById, getCompetitionProblems, getCompetitionUsers, isInCompetition, quitCompetition } from '../../utils/api/competitions';
 import { avatarServer } from '../../utils/axios';
 import { MdPreview } from 'md-editor-v3';
 import { getMdPreviewTheme } from '../../utils/theme';
@@ -32,6 +32,9 @@ const usersInfo = ref([]);
 
 // 竞赛题目信息
 const problems = ref([]);
+const participantsError = ref('');
+const problemsError = ref('');
+const joined = ref(false);
 
 // 显示题目状态
 const compStatus = (status) => {
@@ -64,7 +67,9 @@ const quitComp = async () => {
         showAlert('Quit competition succeeded', "/competitions");
     } catch (error) {
         showAlert(resolveApiErrorMessage(error, {
-            501: 'Quit competition is not supported by rebuild backend yet'
+            403: 'You are not allowed to quit this contest',
+            404: 'Contest membership not found',
+            409: 'Contest is already in terminal participant state'
         }, 'Quit competition failed'), "");
     } finally {
         networkloading.value = false;
@@ -82,8 +87,45 @@ onMounted(async () => {
         try {
             const resp = await getCompetitionById(competitionId);
             contestInfo.value = resp?.data?.data || {};
-            usersInfo.value = [];
-            problems.value = [];
+
+            const [membershipRes, problemsRes, participantsRes] = await Promise.allSettled([
+                isInCompetition(competitionId),
+                getCompetitionProblems(competitionId),
+                getCompetitionUsers(competitionId)
+            ]);
+
+            if (membershipRes.status === 'fulfilled') {
+                joined.value = Boolean(membershipRes.value?.data?.data?.joined);
+            } else {
+                joined.value = false;
+            }
+
+            if (problemsRes.status === 'fulfilled') {
+                const bindings = problemsRes.value?.data?.data || [];
+                problems.value = bindings.map((item) => ({
+                    id: item.problem_id,
+                    title: item.alias || `Problem ${item.problem_id}`,
+                    difficulty: Number(item.difficulty ?? 0)
+                }));
+                problemsError.value = '';
+            } else {
+                problems.value = [];
+                problemsError.value = resolveApiErrorMessage(problemsRes.reason, {
+                    403: 'You do not have permission to view contest problems',
+                    404: 'Contest problems are not available'
+                }, 'Contest problems are temporarily unavailable');
+            }
+
+            if (participantsRes.status === 'fulfilled') {
+                usersInfo.value = participantsRes.value?.data?.data || [];
+                participantsError.value = '';
+            } else {
+                usersInfo.value = [];
+                participantsError.value = resolveApiErrorMessage(participantsRes.reason, {
+                    403: 'Participants are visible only to joined users, owners, or admins',
+                    404: 'Contest participants are not available'
+                }, 'Contest participants are temporarily unavailable');
+            }
         } catch (error) {
             showAlert(resolveApiErrorMessage(error, {
                 401: 'Please login first',
@@ -143,7 +185,7 @@ onUnmounted(() => {
                 <p>{{ contestInfo.subtitle }}</p>
             </v-col>
             <template v-slot:append>
-                <v-btn v-if="!isContestEnded" color="primary" variant="flat" rounded="xl" @click="quitDialog = true">{{ t('message.quit')
+                <v-btn v-if="!isContestEnded && joined" color="primary" variant="flat" rounded="xl" @click="quitDialog = true">{{ t('message.quit')
                     }}</v-btn>
             </template>
         </v-app-bar>
@@ -193,6 +235,9 @@ onUnmounted(() => {
                                     </template>
                                 </v-list-item>
                             </v-list>
+                            <div v-else-if="problemsError" class="text-center">
+                                <p>{{ problemsError }}</p>
+                            </div>
                             <div v-else class="text-center">
                                 <p>{{ t('message.unavailable') }}</p>
                             </div>
@@ -203,7 +248,7 @@ onUnmounted(() => {
                             <template v-slot:title>
                                 <span class="font-weight-black">{{ t('message.participants') }}</span>
                             </template>
-                            <v-list style="max-height: 450px; overflow-y: auto;">
+                            <v-list v-if="usersInfo.length > 0" style="max-height: 450px; overflow-y: auto;">
                                 <v-list-item v-for="user in usersInfo" :key="user.user_id">
                                     <v-list-item-title class="username-avatar">
                                         <v-avatar size="40" color="surface-variant">
@@ -215,13 +260,19 @@ onUnmounted(() => {
                                                 {{ user.username }}
                                             </div>
                                             <div class="timeline">
-                                                {{ moment(user.join_date).format("MM-DD HH:mm") }}
+                                                {{ user.joined_at ? moment(user.joined_at).format("MM-DD HH:mm") : '-' }}
                                             </div>
                                         </div>
                                     </v-list-item-title>
                                     <v-divider></v-divider>
                                 </v-list-item>
                             </v-list>
+                            <div v-else-if="participantsError" class="text-center" style="padding-top: 16px;">
+                                <p>{{ participantsError }}</p>
+                            </div>
+                            <div v-else class="text-center" style="padding-top: 16px;">
+                                <p>{{ t('message.unavailable') }}</p>
+                            </div>
                         </v-card>
                     </v-col>
                 </v-row>

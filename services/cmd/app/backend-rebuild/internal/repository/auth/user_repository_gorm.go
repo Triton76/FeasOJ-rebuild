@@ -15,18 +15,18 @@ import (
 )
 
 type userRow struct {
-	ID           string    `gorm:"column:id"`
-	Username     string    `gorm:"column:username"`
-	Email        string    `gorm:"column:email"`
-	PasswordHash string    `gorm:"column:password_hash"`
+	ID                string    `gorm:"column:id"`
+	Username          string    `gorm:"column:username"`
+	Email             string    `gorm:"column:email"`
+	PasswordHash      string    `gorm:"column:password_hash"`
 	PasswordUpdatedAt time.Time `gorm:"column:password_updated_at"`
-	Role         string    `gorm:"column:role"`
-	Avatar       string    `gorm:"column:avatar"`
-	Synopsis     string    `gorm:"column:synopsis"`
-	Score        int       `gorm:"column:score"`
-	Status       string    `gorm:"column:status"`
-	CreatedAt    time.Time `gorm:"column:created_at"`
-	UpdatedAt    time.Time `gorm:"column:updated_at"`
+	Role              string    `gorm:"column:role"`
+	Avatar            string    `gorm:"column:avatar"`
+	Synopsis          string    `gorm:"column:synopsis"`
+	Score             int       `gorm:"column:score"`
+	Status            string    `gorm:"column:status"`
+	CreatedAt         time.Time `gorm:"column:created_at"`
+	UpdatedAt         time.Time `gorm:"column:updated_at"`
 }
 
 func (userRow) TableName() string {
@@ -88,35 +88,35 @@ func (r *UserRepository) UpdatePasswordByEmail(ctx context.Context, email, passw
 
 func toRow(u authusecase.User) userRow {
 	return userRow{
-		ID:           u.ID,
-		Username:     u.Username,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
+		ID:                u.ID,
+		Username:          u.Username,
+		Email:             u.Email,
+		PasswordHash:      u.PasswordHash,
 		PasswordUpdatedAt: u.PasswordUpdatedAt,
-		Role:         u.Role,
-		Avatar:       u.Avatar,
-		Synopsis:     u.Synopsis,
-		Score:        u.Score,
-		Status:       u.Status,
-		CreatedAt:    u.CreatedAt,
-		UpdatedAt:    u.UpdatedAt,
+		Role:              u.Role,
+		Avatar:            u.Avatar,
+		Synopsis:          u.Synopsis,
+		Score:             u.Score,
+		Status:            u.Status,
+		CreatedAt:         u.CreatedAt,
+		UpdatedAt:         u.UpdatedAt,
 	}
 }
 
 func fromRow(r userRow) authusecase.User {
 	return authusecase.User{
-		ID:           r.ID,
-		Username:     r.Username,
-		Email:        r.Email,
-		PasswordHash: r.PasswordHash,
+		ID:                r.ID,
+		Username:          r.Username,
+		Email:             r.Email,
+		PasswordHash:      r.PasswordHash,
 		PasswordUpdatedAt: r.PasswordUpdatedAt,
-		Role:         r.Role,
-		Avatar:       r.Avatar,
-		Synopsis:     r.Synopsis,
-		Score:        r.Score,
-		Status:       r.Status,
-		CreatedAt:    r.CreatedAt,
-		UpdatedAt:    r.UpdatedAt,
+		Role:              r.Role,
+		Avatar:            r.Avatar,
+		Synopsis:          r.Synopsis,
+		Score:             r.Score,
+		Status:            r.Status,
+		CreatedAt:         r.CreatedAt,
+		UpdatedAt:         r.UpdatedAt,
 	}
 }
 

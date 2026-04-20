@@ -23,6 +23,10 @@ type User struct {
 
 type UserRepository interface {
 	GetByID(ctx context.Context, userID string) (User, error)
-	UpdateProfile(ctx context.Context, userID, avatar, synopsis string, updatedAt time.Time) (bool, error)
+	UpdateProfile(ctx context.Context, userID string, avatar, synopsis *string, updatedAt time.Time) (bool, error)
 	ListRanking(ctx context.Context, offset, limit int) ([]User, error)
+}
+
+type AvatarStorage interface {
+	Save(ctx context.Context, name string, data []byte) (string, error)
 }

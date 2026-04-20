@@ -23,6 +23,11 @@ feature_flags:
   enable_embedded_judge_worker: true
   enable_class_workflow_v2: true
   enable_password_reset: false
+  enable_avatar_upload: true
+
+avatar_storage:
+  dir: app/backend-rebuild/var/avatars
+  max_bytes: 2097152
 
 rabbitmq:
   url: amqp://guest:guest@localhost:5672/

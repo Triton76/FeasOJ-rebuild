@@ -62,6 +62,10 @@ func (UsersService) GetProfile(context.Context, string) (ports.UserDTO, error) {
 	return ports.UserDTO{}, ports.ErrNotImplemented
 }
 
+func (UsersService) UploadAvatar(context.Context, string, ports.UploadAvatarRequest) (ports.AvatarUploadResponse, error) {
+	return ports.AvatarUploadResponse{}, ports.ErrNotImplemented
+}
+
 func (UsersService) UpdateProfile(context.Context, string, ports.UpdateProfileRequest) (ports.UserDTO, error) {
 	return ports.UserDTO{}, ports.ErrNotImplemented
 }
@@ -178,6 +182,18 @@ func (CompetitionsService) ReplaceContestProblems(context.Context, ports.Replace
 	return nil, ports.ErrNotImplemented
 }
 
+func (CompetitionsService) GetContestMembership(context.Context, ports.ContestMembershipQuery) (ports.ContestMembershipDTO, error) {
+	return ports.ContestMembershipDTO{}, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) ListContestParticipants(context.Context, ports.ContestParticipantsQuery) ([]ports.ContestParticipantDetailDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (CompetitionsService) QuitContest(context.Context, ports.QuitContestRequest) (ports.ContestParticipantDTO, error) {
+	return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
+}
+
 func (CompetitionsService) JoinContest(context.Context, ports.JoinContestRequest) (ports.ContestParticipantDTO, error) {
 	return ports.ContestParticipantDTO{}, ports.ErrNotImplemented
 }
@@ -202,6 +218,18 @@ func (DiscussionsService) CreateDiscussion(context.Context, ports.CreateDiscussi
 
 func (DiscussionsService) CreateComment(context.Context, ports.CreateCommentRequest) (ports.CommentDTO, error) {
 	return ports.CommentDTO{}, ports.ErrNotImplemented
+}
+
+func (DiscussionsService) ListComments(context.Context, ports.CommentsQuery) ([]ports.CommentDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (DiscussionsService) DeleteDiscussion(context.Context, ports.DeleteDiscussionRequest) error {
+	return ports.ErrNotImplemented
+}
+
+func (DiscussionsService) DeleteComment(context.Context, ports.DeleteCommentRequest) error {
+	return ports.ErrNotImplemented
 }
 
 type SubmitRecordsService struct{}

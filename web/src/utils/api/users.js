@@ -37,17 +37,25 @@ export const updateSynopsis = async (synopsis) => {
 
 // 修改头像
 export const uploadAvatar = async (file) => {
-    // Rebuild 后端当前阶段 UpdateProfile 仅支持 avatar 字符串字段，不支持文件上传。
-    // 先传空字符串，避免页面调用时报错；后续可扩展独立上传能力。
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const uploadResp = await axios.post(`${apiUrl}/profile/avatar/upload`, formData, {
+        headers: authHeaders()
+    });
+
+    const avatar = uploadResp.data?.data?.avatar || '';
     const resp = await axios.patch(`${apiUrl}/profile`, {
-        avatar: ''
+        avatar: avatar
     }, {
         headers: authHeaders()
     });
+
     return {
         ...resp,
         data: {
             ...resp.data,
+            uploaded: uploadResp.data?.data || {},
             message: resp.data?.message || 'success'
         }
     }

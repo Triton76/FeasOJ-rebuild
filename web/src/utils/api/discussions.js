@@ -31,12 +31,11 @@ export const getDisDetails = async (did) => {
 
 // 获取指定讨论的所有回复
 export const getComments = async (did) => {
-    // rebuild 当前阶段无独立 comments 列表接口
-    return {
-        data: {
-            data: []
+    return await axios.get(`${apiUrl}/discussions/${did}/comments`, {
+        headers: {
+            ...authHeaders()
         }
-    }
+    })
 }
 
 // 添加讨论
@@ -79,18 +78,18 @@ export const addComment = async (did, content) => {
 
 // 删除讨论
 export const deleteDiscussion = async (id) => {
-    return {
-        data: {
-            message: 'delete discussion is not available in rebuild backend'
+    return await axios.delete(`${apiUrl}/discussions/${id}`, {
+        headers: {
+            ...authHeaders()
         }
-    }
+    })
 }
 
 // 删除讨论评论
 export const deleteComment = async (id) => {
-    return {
-        data: {
-            message: 'delete comment is not available in rebuild backend'
+    return await axios.delete(`${apiUrl}/comments/${id}`, {
+        headers: {
+            ...authHeaders()
         }
-    }
+    })
 }

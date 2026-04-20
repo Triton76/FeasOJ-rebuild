@@ -81,6 +81,9 @@ const uploadAvat = async (cropper) => {
   try {
     const canvas = cropper.getCroppedCanvas();
     const file = await new Promise((resolve) => canvas.toBlob(resolve));
+    if (!file) {
+      throw new Error('failed to generate avatar blob');
+    }
 
     // 获取原始文件的名称和类型
     const imageData = cropper.getImageData();
@@ -92,11 +95,12 @@ const uploadAvat = async (cropper) => {
     const newFile = new File([file], fileName, { type: fileType });
     networkloading.value = true;
     const resp = await uploadAvatar(newFile);
+    userInfo.value = resp.data?.data || userInfo.value;
     networkloading.value = false;
-    showAlert(resp.data.message, "reload");
+    showNotification(resp.data.message);
   } catch (error) {
     networkloading.value = false;
-    showAlert(error.response.data.message, "");
+    showAlert(resolveApiErrorMessage(error, {}, 'avatar upload failed'), "");
   }
 };
 

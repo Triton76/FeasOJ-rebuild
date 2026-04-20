@@ -31,4 +31,8 @@ type Repository interface {
 	GetByID(ctx context.Context, discussionID string) (Discussion, error)
 	CreateDiscussion(ctx context.Context, d Discussion) (Discussion, error)
 	CreateComment(ctx context.Context, c Comment) (Comment, error)
+	ListCommentsByDiscussionID(ctx context.Context, discussionID string, offset, limit int) ([]Comment, error)
+	GetCommentByID(ctx context.Context, commentID string) (Comment, error)
+	DeleteDiscussion(ctx context.Context, discussionID string) error
+	DeleteComment(ctx context.Context, commentID string) error
 }
