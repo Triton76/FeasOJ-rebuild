@@ -6,6 +6,7 @@ package handler
 import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,6 +58,13 @@ func (h Handlers) ListSubmissions(c *gin.Context) {
 }
 
 func (h Handlers) JudgeWriteback(c *gin.Context) {
+	if h.JudgeWritebackToken != "" {
+		if strings.TrimSpace(c.GetHeader("X-Judge-Token")) != h.JudgeWritebackToken {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid judge token"})
+			return
+		}
+	}
+
 	var req ports.JudgeWritebackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

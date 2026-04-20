@@ -21,11 +21,13 @@ type Config struct {
 	Addr                      string
 	MySQLDSN                  string
 	JWTSecret                 string
+	JudgeWritebackToken       string
 	JWTIssuer                 string
 	JWTExpireH                string
 	ContestStatusScanSeconds  int
 	EnableJudgeWriteback      bool
 	EnableScoreboard          bool
+	EnableTestcaseAPIs        bool
 	EnableRabbitMQQueue       bool
 	EnableEmbeddedJudgeWorker bool
 	EnableClassWorkflowV2     bool
@@ -49,12 +51,16 @@ type fileConfig struct {
 		Issuer      string `yaml:"issuer"`
 		ExpireHours int    `yaml:"expire_hours"`
 	} `yaml:"jwt"`
+	Judge struct {
+		WritebackToken string `yaml:"writeback_token"`
+	} `yaml:"judge"`
 	Scheduler struct {
 		ContestStatusScanSeconds int `yaml:"contest_status_scan_seconds"`
 	} `yaml:"scheduler"`
 	FeatureFlags struct {
 		EnableJudgeWriteback      *bool `yaml:"enable_judge_writeback"`
 		EnableScoreboard          *bool `yaml:"enable_scoreboard"`
+		EnableTestcaseAPIs        *bool `yaml:"enable_testcase_apis"`
 		EnableRabbitMQQueue       *bool `yaml:"enable_rabbitmq_queue"`
 		EnableEmbeddedJudgeWorker *bool `yaml:"enable_embedded_judge_worker"`
 		EnableClassWorkflowV2     *bool `yaml:"enable_class_workflow_v2"`
@@ -77,6 +83,7 @@ func Load() (Config, error) {
 		ContestStatusScanSeconds:  defaultContestStatusScanSeconds,
 		EnableJudgeWriteback:      true,
 		EnableScoreboard:          true,
+		EnableTestcaseAPIs:        false,
 		EnableRabbitMQQueue:       false,
 		EnableEmbeddedJudgeWorker: true,
 		EnableClassWorkflowV2:     true,
@@ -123,6 +130,9 @@ func loadFromYAML(cfg *Config) error {
 	if fc.JWT.Secret != "" {
 		cfg.JWTSecret = fc.JWT.Secret
 	}
+	if fc.Judge.WritebackToken != "" {
+		cfg.JudgeWritebackToken = fc.Judge.WritebackToken
+	}
 	if fc.JWT.Issuer != "" {
 		cfg.JWTIssuer = fc.JWT.Issuer
 	}
@@ -137,6 +147,9 @@ func loadFromYAML(cfg *Config) error {
 	}
 	if fc.FeatureFlags.EnableScoreboard != nil {
 		cfg.EnableScoreboard = *fc.FeatureFlags.EnableScoreboard
+	}
+	if fc.FeatureFlags.EnableTestcaseAPIs != nil {
+		cfg.EnableTestcaseAPIs = *fc.FeatureFlags.EnableTestcaseAPIs
 	}
 	if fc.FeatureFlags.EnableRabbitMQQueue != nil {
 		cfg.EnableRabbitMQQueue = *fc.FeatureFlags.EnableRabbitMQQueue
@@ -179,6 +192,9 @@ func loadFromEnv(cfg *Config) {
 	if v := os.Getenv("BACKEND_REBUILD_JWT_SECRET"); v != "" {
 		cfg.JWTSecret = v
 	}
+	if v := os.Getenv("BACKEND_REBUILD_JUDGE_WRITEBACK_TOKEN"); v != "" {
+		cfg.JudgeWritebackToken = v
+	}
 	if v := os.Getenv("BACKEND_REBUILD_JWT_ISSUER"); v != "" {
 		cfg.JWTIssuer = v
 	}
@@ -195,6 +211,9 @@ func loadFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_SCOREBOARD"); v != "" {
 		cfg.EnableScoreboard = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("BACKEND_REBUILD_ENABLE_TESTCASE_APIS"); v != "" {
+		cfg.EnableTestcaseAPIs = v == "1" || v == "true" || v == "TRUE"
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_RABBITMQ_QUEUE"); v != "" {
 		cfg.EnableRabbitMQQueue = v == "1" || v == "true" || v == "TRUE"

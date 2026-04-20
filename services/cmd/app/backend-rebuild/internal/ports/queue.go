@@ -6,8 +6,11 @@ package ports
 
 import "context"
 
+const SubmissionJobContractV1 = "v1"
+
 // SubmissionJob 表示一个待判题的提交任务
 type SubmissionJob struct {
+	ContractVersion string `json:"contract_version"`
 	SubmissionID int64  `json:"submission_id"`
 	UserID       string `json:"user_id"`
 	ProblemID    int64  `json:"problem_id"`

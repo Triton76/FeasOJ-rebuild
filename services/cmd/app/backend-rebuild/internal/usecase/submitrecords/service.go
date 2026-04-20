@@ -86,6 +86,7 @@ func (s *Service) CreateSubmission(ctx context.Context, req ports.CreateSubmissi
 	// 第二步：将提交入队，准备异步判题
 	// 幂等键为 submission_id，重复入队时直接返回成功
 	job := ports.SubmissionJob{
+		ContractVersion: ports.SubmissionJobContractV1,
 		SubmissionID: item.ID,
 		UserID:       item.UserID,
 		ProblemID:    item.ProblemID,
@@ -175,6 +176,9 @@ func (s *Service) WritebackSubmission(ctx context.Context, req ports.JudgeWriteb
 		return ports.SubmissionDTO{}, ports.ErrNotImplemented
 	}
 	if req.SubmissionID <= 0 || !isTerminalResult(req.Result) {
+		return ports.SubmissionDTO{}, ports.ErrInvalidArgument
+	}
+	if strings.TrimSpace(req.ContractVersion) != "" && strings.TrimSpace(req.ContractVersion) != ports.JudgeWritebackContractV1 {
 		return ports.SubmissionDTO{}, ports.ErrInvalidArgument
 	}
 	if req.Score != nil && *req.Score < 0 {

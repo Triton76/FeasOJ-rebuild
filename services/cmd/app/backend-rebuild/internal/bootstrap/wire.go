@@ -106,6 +106,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 		Discussions:   services.Discussions,
 		SubmitRecords: services.SubmitRecords,
 		Admin:         services.Admin,
+		JudgeWritebackToken: cfg.JudgeWritebackToken,
 	})
 
 	router.Register(g, h, cfg)

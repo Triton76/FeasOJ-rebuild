@@ -9,12 +9,16 @@ jwt:
   issuer: feasoj-backend-rebuild
   expire_hours: 72
 
+judge:
+  writeback_token: ""
+
 scheduler:
   contest_status_scan_seconds: 30
 
 feature_flags:
   enable_judge_writeback: true
   enable_scoreboard: true
+  enable_testcase_apis: false
   enable_rabbitmq_queue: false
   enable_embedded_judge_worker: true
   enable_class_workflow_v2: true

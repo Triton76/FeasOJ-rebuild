@@ -48,6 +48,7 @@ type scoreboardSubmissionRow struct {
 	Username    string    `gorm:"column:username"`
 	ProblemID   int64     `gorm:"column:problem_id"`
 	Result      string    `gorm:"column:result"`
+	Score       int       `gorm:"column:score"`
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
@@ -186,7 +187,7 @@ func (r *Repository) ListScoreboardSubmissions(ctx context.Context, contestID in
 	var rows []scoreboardSubmissionRow
 	err := r.db.WithContext(ctx).
 		Table("submissions AS s").
-		Select("s.user_id, u.username, s.problem_id, s.result, s.submitted_at").
+		Select("s.user_id, u.username, s.problem_id, s.result, COALESCE(s.score, 0) AS score, s.submitted_at").
 		Joins("JOIN users AS u ON u.id = s.user_id").
 		Where("s.contest_id = ? AND s.submitted_at < ?", contestID, before).
 		Order("s.submitted_at ASC").
@@ -202,6 +203,7 @@ func (r *Repository) ListScoreboardSubmissions(ctx context.Context, contestID in
 			Username:    row.Username,
 			ProblemID:   row.ProblemID,
 			Result:      row.Result,
+			Score:       row.Score,
 			SubmittedAt: row.SubmittedAt,
 		})
 	}

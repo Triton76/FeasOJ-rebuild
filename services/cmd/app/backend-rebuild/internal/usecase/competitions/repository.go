@@ -39,6 +39,7 @@ type ScoreboardSubmission struct {
 	Username    string
 	ProblemID   int64
 	Result      string
+	Score       int
 	SubmittedAt time.Time
 }
 

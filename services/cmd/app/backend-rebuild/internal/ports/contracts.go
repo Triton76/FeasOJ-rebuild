@@ -305,6 +305,7 @@ type ContestScoreboardItem struct {
 	UserID         string `json:"user_id"`
 	Username       string `json:"username"`
 	Solved         int    `json:"solved"`
+	TotalScore     int    `json:"total_score"`
 	PenaltyMinutes int    `json:"penalty_minutes"`
 	ReachedAt      string `json:"reached_at"`
 }
@@ -362,7 +363,10 @@ type CreateSubmissionRequest struct {
 	UserID     string `json:"user_id"`
 }
 
+const JudgeWritebackContractV1 = "v1"
+
 type JudgeWritebackRequest struct {
+	ContractVersion string `json:"contract_version"`
 	SubmissionID int64  `json:"submission_id"`
 	Result       string `json:"result"`
 	Score        *int   `json:"score"`

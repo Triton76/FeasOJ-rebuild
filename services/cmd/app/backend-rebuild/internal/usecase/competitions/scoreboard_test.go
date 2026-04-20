@@ -52,12 +52,12 @@ func TestScoreboardSortBySolvedPenaltyAndReachedAt(t *testing.T) {
 	start := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	end := start.Add(2 * time.Hour)
 	repo := &fakeScoreboardRepo{
-		contest: Contest{ID: 1, StartAt: &start, EndAt: &end},
+		contest: Contest{ID: 1, StartAt: &start, EndAt: &end, RuleType: "acm"},
 		submissions: []ScoreboardSubmission{
-			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", SubmittedAt: start.Add(20 * time.Minute)},
-			{UserID: "u1", Username: "alice", ProblemID: 2, Result: "accepted", SubmittedAt: start.Add(40 * time.Minute)},
-			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", SubmittedAt: start.Add(20 * time.Minute)},
-			{UserID: "u2", Username: "bob", ProblemID: 2, Result: "accepted", SubmittedAt: start.Add(50 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(20 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 2, Result: "accepted", Score: 100, SubmittedAt: start.Add(40 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(20 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 2, Result: "accepted", Score: 100, SubmittedAt: start.Add(50 * time.Minute)},
 		},
 	}
 
@@ -79,12 +79,12 @@ func TestScoreboardSortBySolvedPenaltyAndReachedAt(t *testing.T) {
 func TestScoreboardCompileErrorPenaltyOnlyWhenSolved(t *testing.T) {
 	start := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	repo := &fakeScoreboardRepo{
-		contest: Contest{ID: 2, StartAt: &start},
+		contest: Contest{ID: 2, StartAt: &start, RuleType: "acm"},
 		submissions: []ScoreboardSubmission{
-			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "compile_error", SubmittedAt: start.Add(5 * time.Minute)},
-			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", SubmittedAt: start.Add(20 * time.Minute)},
-			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "compile_error", SubmittedAt: start.Add(5 * time.Minute)},
-			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "wrong_answer", SubmittedAt: start.Add(10 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "compile_error", Score: 0, SubmittedAt: start.Add(5 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(20 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "compile_error", Score: 0, SubmittedAt: start.Add(5 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "wrong_answer", Score: 0, SubmittedAt: start.Add(10 * time.Minute)},
 		},
 	}
 
@@ -110,11 +110,11 @@ func TestScoreboardFreezeHidesLastSixtyMinutesBoundary(t *testing.T) {
 	start := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	end := start.Add(2 * time.Hour)
 	repo := &fakeScoreboardRepo{
-		contest: Contest{ID: 3, StartAt: &start, EndAt: &end},
+		contest: Contest{ID: 3, StartAt: &start, EndAt: &end, RuleType: "acm"},
 		submissions: []ScoreboardSubmission{
-			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", SubmittedAt: start.Add(50 * time.Minute)},
-			{UserID: "u1", Username: "alice", ProblemID: 2, Result: "accepted", SubmittedAt: start.Add(60 * time.Minute)},
-			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", SubmittedAt: start.Add(70 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(50 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 2, Result: "accepted", Score: 100, SubmittedAt: start.Add(60 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(70 * time.Minute)},
 		},
 	}
 
@@ -133,5 +133,61 @@ func TestScoreboardFreezeHidesLastSixtyMinutesBoundary(t *testing.T) {
 	}
 	if resp.VisibleItems[0].UserID != "u1" || resp.VisibleItems[0].Solved != 1 {
 		t.Fatalf("expected only first pre-freeze acceptance visible, got user=%s solved=%d", resp.VisibleItems[0].UserID, resp.VisibleItems[0].Solved)
+	}
+}
+
+func TestScoreboardOIUsesPerProblemBestScoreAggregation(t *testing.T) {
+	start := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
+	repo := &fakeScoreboardRepo{
+		contest: Contest{ID: 4, StartAt: &start, RuleType: "oi"},
+		submissions: []ScoreboardSubmission{
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "wrong_answer", Score: 20, SubmittedAt: start.Add(5 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", Score: 60, SubmittedAt: start.Add(15 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 2, Result: "accepted", Score: 90, SubmittedAt: start.Add(25 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", Score: 70, SubmittedAt: start.Add(10 * time.Minute)},
+			{UserID: "u2", Username: "bob", ProblemID: 2, Result: "accepted", Score: 60, SubmittedAt: start.Add(20 * time.Minute)},
+		},
+	}
+
+	svc := NewService(repo)
+	svc.nowFn = func() time.Time { return start.Add(40 * time.Minute) }
+
+	resp, err := svc.GetScoreboard(context.Background(), ports.ContestScoreboardQuery{ContestID: 4})
+	if err != nil {
+		t.Fatalf("GetScoreboard failed: %v", err)
+	}
+	if len(resp.VisibleItems) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(resp.VisibleItems))
+	}
+	if resp.VisibleItems[0].UserID != "u1" || resp.VisibleItems[0].TotalScore != 150 {
+		t.Fatalf("expected u1 total_score=150, got user=%s score=%d", resp.VisibleItems[0].UserID, resp.VisibleItems[0].TotalScore)
+	}
+	if resp.VisibleItems[1].UserID != "u2" || resp.VisibleItems[1].TotalScore != 130 {
+		t.Fatalf("expected u2 total_score=130, got user=%s score=%d", resp.VisibleItems[1].UserID, resp.VisibleItems[1].TotalScore)
+	}
+}
+
+func TestScoreboardOITieBreakUsesEarlierReachedAtThenUserID(t *testing.T) {
+	start := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
+	repo := &fakeScoreboardRepo{
+		contest: Contest{ID: 5, StartAt: &start, RuleType: "oi"},
+		submissions: []ScoreboardSubmission{
+			{UserID: "u2", Username: "bob", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(20 * time.Minute)},
+			{UserID: "u1", Username: "alice", ProblemID: 1, Result: "accepted", Score: 100, SubmittedAt: start.Add(15 * time.Minute)},
+		},
+	}
+
+	svc := NewService(repo)
+	svc.nowFn = func() time.Time { return start.Add(30 * time.Minute) }
+
+	resp, err := svc.GetScoreboard(context.Background(), ports.ContestScoreboardQuery{ContestID: 5})
+	if err != nil {
+		t.Fatalf("GetScoreboard failed: %v", err)
+	}
+	if len(resp.VisibleItems) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(resp.VisibleItems))
+	}
+	if resp.VisibleItems[0].UserID != "u1" {
+		t.Fatalf("expected u1 first by earlier reached_at, got %s", resp.VisibleItems[0].UserID)
 	}
 }

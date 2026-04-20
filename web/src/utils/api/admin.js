@@ -239,7 +239,7 @@ export const getScores = async (cid, page, itemsPerPage) => {
     const end = start + Number(itemsPerPage)
     const users = rows.slice(start, end).map((item) => ({
         username: item.username,
-        score: item.solved
+        score: Number(item.total_score ?? item.solved ?? 0)
     }))
     return {
         ...resp,

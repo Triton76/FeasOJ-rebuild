@@ -319,9 +319,10 @@ func (s *Service) GetScoreboard(ctx context.Context, req ports.ContestScoreboard
 		return ports.ContestScoreboardResponse{}, err
 	}
 
-	items := buildScoreboardItems(submissions, contest.StartAt)
+	items := buildScoreboardItemsByRuleType(submissions, contest.StartAt, contest.RuleType)
 	observability.LogJSON("scoreboard.query", map[string]any{
 		"contest_id": req.ContestID,
+		"rule_type": strings.TrimSpace(contest.RuleType),
 		"freeze_active": freezeActive,
 		"items": len(items),
 	})
@@ -352,7 +353,14 @@ type userAgg struct {
 	problemStat map[int64]*problemBucket
 }
 
-func buildScoreboardItems(submissions []ScoreboardSubmission, contestStart *time.Time) []ports.ContestScoreboardItem {
+func buildScoreboardItemsByRuleType(submissions []ScoreboardSubmission, contestStart *time.Time, ruleType string) []ports.ContestScoreboardItem {
+	if strings.TrimSpace(ruleType) == "oi" {
+		return buildOIScoreboardItems(submissions)
+	}
+	return buildACMScoreboardItems(submissions, contestStart)
+}
+
+func buildACMScoreboardItems(submissions []ScoreboardSubmission, contestStart *time.Time) []ports.ContestScoreboardItem {
 	byUser := make(map[string]*userAgg)
 
 	for _, sub := range submissions {
@@ -445,7 +453,102 @@ func buildScoreboardItems(submissions []ScoreboardSubmission, contestStart *time
 			UserID:         row.userID,
 			Username:       row.username,
 			Solved:         row.solved,
+			TotalScore:     0,
 			PenaltyMinutes: row.penalty,
+			ReachedAt:      reachedAt,
+		})
+	}
+	return items
+}
+
+type oiProblemBucket struct {
+	bestScore int
+	bestAt    time.Time
+}
+
+type oiUserAgg struct {
+	userID      string
+	username    string
+	totalScore  int
+	reachedAt   time.Time
+	problemStat map[int64]*oiProblemBucket
+}
+
+func buildOIScoreboardItems(submissions []ScoreboardSubmission) []ports.ContestScoreboardItem {
+	byUser := make(map[string]*oiUserAgg)
+
+	for _, sub := range submissions {
+		result := strings.TrimSpace(sub.Result)
+		if result == "pending" || result == "judging" {
+			continue
+		}
+
+		agg, ok := byUser[sub.UserID]
+		if !ok {
+			agg = &oiUserAgg{
+				userID:      sub.UserID,
+				username:    sub.Username,
+				problemStat: make(map[int64]*oiProblemBucket),
+			}
+			byUser[sub.UserID] = agg
+		}
+
+		bucket, ok := agg.problemStat[sub.ProblemID]
+		if !ok {
+			bucket = &oiProblemBucket{}
+			agg.problemStat[sub.ProblemID] = bucket
+		}
+
+		if sub.Score > bucket.bestScore || (sub.Score == bucket.bestScore && (bucket.bestAt.IsZero() || sub.SubmittedAt.UTC().Before(bucket.bestAt))) {
+			bucket.bestScore = sub.Score
+			bucket.bestAt = sub.SubmittedAt.UTC()
+		}
+	}
+
+	for _, agg := range byUser {
+		for _, bucket := range agg.problemStat {
+			agg.totalScore += bucket.bestScore
+			if !bucket.bestAt.IsZero() && (agg.reachedAt.IsZero() || bucket.bestAt.After(agg.reachedAt)) {
+				agg.reachedAt = bucket.bestAt
+			}
+		}
+	}
+
+	sorted := make([]*oiUserAgg, 0, len(byUser))
+	for _, agg := range byUser {
+		sorted = append(sorted, agg)
+	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		a := sorted[i]
+		b := sorted[j]
+		if a.totalScore != b.totalScore {
+			return a.totalScore > b.totalScore
+		}
+		if !a.reachedAt.Equal(b.reachedAt) {
+			if a.reachedAt.IsZero() {
+				return false
+			}
+			if b.reachedAt.IsZero() {
+				return true
+			}
+			return a.reachedAt.Before(b.reachedAt)
+		}
+		return a.userID < b.userID
+	})
+
+	items := make([]ports.ContestScoreboardItem, 0, len(sorted))
+	for i, row := range sorted {
+		reachedAt := ""
+		if !row.reachedAt.IsZero() {
+			reachedAt = row.reachedAt.UTC().Format(time.RFC3339)
+		}
+		items = append(items, ports.ContestScoreboardItem{
+			Rank:           i + 1,
+			UserID:         row.userID,
+			Username:       row.username,
+			Solved:         0,
+			TotalScore:     row.totalScore,
+			PenaltyMinutes: 0,
 			ReachedAt:      reachedAt,
 		})
 	}

@@ -7,6 +7,7 @@ import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,9 +21,11 @@ type Handlers struct {
 	Discussions   ports.DiscussionsService
 	SubmitRecords ports.SubmitRecordsService
 	Admin         ports.AdminService
+	JudgeWritebackToken string
 }
 
 func New(h Handlers) Handlers {
+	h.JudgeWritebackToken = strings.TrimSpace(h.JudgeWritebackToken)
 	return h
 }
 

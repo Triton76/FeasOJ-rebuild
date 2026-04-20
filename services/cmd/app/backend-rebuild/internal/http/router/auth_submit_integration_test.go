@@ -110,3 +110,37 @@ func TestAuthThenSubmitIntegration(t *testing.T) {
 		t.Fatalf("expected user_id from claims to be u-1, got %s", submitSvc.lastReq.UserID)
 	}
 }
+
+func TestJudgeWritebackAuthFailureIntegration(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	submitSvc := &fakeSubmitService{}
+	h := handler.New(handler.Handlers{
+		Auth:                fakeAuthService{},
+		SubmitRecords:       submitSvc,
+		JudgeWritebackToken: "judge-secret",
+	})
+
+	r := gin.New()
+	r.Use(gin.Recovery())
+	Register(r, h, config.Config{JWTSecret: "test-secret", EnableJudgeWriteback: true})
+
+	payload := `{"contract_version":"v1","submission_id":1,"result":"accepted","score":100,"source":"judgecore"}`
+
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/judge/writeback", strings.NewReader(payload))
+	badReq.Header.Set("Content-Type", "application/json")
+	badRec := httptest.NewRecorder()
+	r.ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for missing token, got %d body=%s", badRec.Code, badRec.Body.String())
+	}
+
+	goodReq := httptest.NewRequest(http.MethodPost, "/api/v1/judge/writeback", strings.NewReader(payload))
+	goodReq.Header.Set("Content-Type", "application/json")
+	goodReq.Header.Set("X-Judge-Token", "judge-secret")
+	goodRec := httptest.NewRecorder()
+	r.ServeHTTP(goodRec, goodReq)
+	if goodRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for valid token, got %d body=%s", goodRec.Code, goodRec.Body.String())
+	}
+}
