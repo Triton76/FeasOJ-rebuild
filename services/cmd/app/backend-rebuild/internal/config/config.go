@@ -18,6 +18,8 @@ const defaultContestStatusScanSeconds = 30
 const defaultConfigPath = "app/backend-rebuild/config.yaml"
 
 type Config struct {
+	ConfigPath                 string
+	ConfigSource               string
 	Addr                      string
 	MySQLDSN                  string
 	JWTSecret                 string
@@ -79,6 +81,7 @@ type fileConfig struct {
 
 func Load() (Config, error) {
 	cfg := Config{
+		ConfigSource:              "defaults",
 		Addr:                      defaultAddr,
 		JWTIssuer:                 defaultJWTIssuer,
 		JWTExpireH:                defaultJWTExpireHours,
@@ -101,6 +104,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	loadFromEnv(&cfg)
+	if err := validateStrict(&cfg); err != nil {
+		return Config{}, err
+	}
 
 	return cfg, nil
 }
@@ -110,10 +116,12 @@ func loadFromYAML(cfg *Config) error {
 	if path == "" {
 		path = defaultConfigPath
 	}
+	cfg.ConfigPath = path
 
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			cfg.ConfigSource = "defaults"
 			return nil
 		}
 		return fmt.Errorf("read config yaml failed: %w", err)
@@ -123,6 +131,7 @@ func loadFromYAML(cfg *Config) error {
 	if err := yaml.Unmarshal(content, &fc); err != nil {
 		return fmt.Errorf("parse config yaml failed: %w", err)
 	}
+	cfg.ConfigSource = "yaml:" + path
 
 	if fc.Server.Addr != "" {
 		cfg.Addr = fc.Server.Addr
@@ -189,66 +198,87 @@ func loadFromYAML(cfg *Config) error {
 }
 
 func loadFromEnv(cfg *Config) {
+	envOverride := false
 	if v := os.Getenv("BACKEND_REBUILD_ADDR"); v != "" {
 		cfg.Addr = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_MYSQL_DSN"); v != "" {
 		cfg.MySQLDSN = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_JWT_SECRET"); v != "" {
 		cfg.JWTSecret = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_JUDGE_WRITEBACK_TOKEN"); v != "" {
 		cfg.JudgeWritebackToken = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_JWT_ISSUER"); v != "" {
 		cfg.JWTIssuer = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_JWT_EXPIRE_HOURS"); v != "" {
 		cfg.JWTExpireH = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_CONTEST_STATUS_SCAN_SECONDS"); v != "" {
+		envOverride = true
 		if sec, err := strconv.Atoi(v); err == nil && sec > 0 {
 			cfg.ContestStatusScanSeconds = sec
 		}
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_JUDGE_WRITEBACK"); v != "" {
 		cfg.EnableJudgeWriteback = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_SCOREBOARD"); v != "" {
 		cfg.EnableScoreboard = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_TESTCASE_APIS"); v != "" {
 		cfg.EnableTestcaseAPIs = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_RABBITMQ_QUEUE"); v != "" {
 		cfg.EnableRabbitMQQueue = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_EMBEDDED_JUDGE_WORKER"); v != "" {
 		cfg.EnableEmbeddedJudgeWorker = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_CLASS_WORKFLOW_V2"); v != "" {
 		cfg.EnableClassWorkflowV2 = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_ENABLE_PASSWORD_RESET"); v != "" {
 		cfg.EnablePasswordReset = v == "1" || v == "true" || v == "TRUE"
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_URL"); v != "" {
 		cfg.RabbitMQURL = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_EXCHANGE"); v != "" {
 		cfg.RabbitMQExchange = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_MAIN_QUEUE"); v != "" {
 		cfg.RabbitMQMainQueue = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_RETRY_QUEUE"); v != "" {
 		cfg.RabbitMQRetryQueue = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_DLQ"); v != "" {
 		cfg.RabbitMQDLQ = v
+		envOverride = true
 	}
 	if v := os.Getenv("BACKEND_REBUILD_RABBITMQ_WORKER_PREFETCH"); v != "" {
+		envOverride = true
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.RabbitMQWorkerPrefetch = n
 		}
@@ -278,4 +308,25 @@ func loadFromEnv(cfg *Config) {
 	if cfg.RabbitMQWorkerPrefetch <= 0 {
 		cfg.RabbitMQWorkerPrefetch = 1
 	}
+	if envOverride {
+		if cfg.ConfigSource == "" {
+			cfg.ConfigSource = "env"
+		} else {
+			cfg.ConfigSource += "+env"
+		}
+	}
+}
+
+func validateStrict(cfg *Config) error {
+	strict := os.Getenv("BACKEND_REBUILD_STRICT_CONFIG")
+	if strict != "1" && strict != "true" && strict != "TRUE" {
+		return nil
+	}
+	if cfg.JWTSecret == "" {
+		return fmt.Errorf("strict config: BACKEND_REBUILD_JWT_SECRET (or jwt.secret) is required")
+	}
+	if cfg.MySQLDSN == "" {
+		return fmt.Errorf("strict config: BACKEND_REBUILD_MYSQL_DSN (or mysql.dsn) is required")
+	}
+	return nil
 }

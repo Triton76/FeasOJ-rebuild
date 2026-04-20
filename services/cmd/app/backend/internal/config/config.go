@@ -120,6 +120,7 @@ func InitConfig() error {
 	}
 
 	log.Println("[FeasOJ] Configuration file loaded successfully")
+	log.Println("[FeasOJ] Config source: toml:", configPath)
 	return nil
 }
 

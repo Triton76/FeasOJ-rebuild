@@ -14,6 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("[backend-rebuild] load config failed: %v", err)
 	}
+	log.Printf("[backend-rebuild] config source=%s path=%s", cfg.ConfigSource, cfg.ConfigPath)
 
 	r := bootstrap.BuildRouter(cfg)
 	log.Printf("[backend-rebuild] listening on %s", cfg.Addr)

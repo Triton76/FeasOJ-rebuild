@@ -35,7 +35,7 @@
 ## 6. Config & Ops Entry Convergence
 
 - [x] 6.1 [P0][Depends: 1.3][AC: backend/backend-rebuild/judgecore 的配置优先级文档统一] Define deterministic config precedence policy (ENV vs file).
-- [ ] 6.2 [P0][Depends: 6.1][AC: 三服务启动日志均输出生效配置源] Add runtime config source reporting and fail-fast checks.
+- [x] 6.2 [P0][Depends: 6.1][AC: 三服务启动日志均输出生效配置源] Add runtime config source reporting and fail-fast checks.
 - [ ] 6.3 [P1][Depends: 6.1][AC: 兼容窗口内 YAML/TOML 迁移有告警且可运行] Implement migration-safe compatibility mode and deprecation warnings.
 - [x] 6.4 [P1][Depends: 6.2][AC: 部署手册更新并经演练通过] Update deployment/runbook with rollback toggles and entry commands.
 

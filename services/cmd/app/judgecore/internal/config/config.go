@@ -77,6 +77,7 @@ func LoadConfig(currentDir string) (*AppConfig, error) {
 	if _, err := toml.Decode(string(configData), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %v", err)
 	}
+	log.Println("[FeasOJ] Config source: toml:", configPath)
 
 	return &config, nil
 }
