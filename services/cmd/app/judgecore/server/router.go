@@ -6,10 +6,9 @@ import (
 	"FeasOJ/app/judgecore/server/middlewares"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func LoadRouter(r *gin.Engine, db *gorm.DB, pool *judge.JudgePool, codeDir string) {
+func LoadRouter(r *gin.Engine, pool *judge.JudgePool, codeDir string) {
 	r.Use(middlewares.Logger())
 
 	// Create a handler instance with its dependencies

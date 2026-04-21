@@ -5,11 +5,12 @@ import { useRoute } from "vue-router";
 import { getPbDetails, uploadCode } from "../../utils/api/problems";
 import { VAceEditor } from "vue3-ace-editor";
 import { showAlert } from "../../utils/alert";
-import { token } from "../../utils/account";
+import { token, userId, userName } from "../../utils/account";
 import { MdPreview } from "md-editor-v3";
 import { useI18n } from "vue-i18n";
 import { difficultyColor, difficultyLang } from "../../utils/dynamic_styles";
 import { getMdPreviewTheme } from "../../utils/theme";
+import { verifyUserInfo } from "../../utils/api/auth";
 import {
   DEFAULT_LANGUAGE,
   getFileExtension,
@@ -28,6 +29,8 @@ const problemInfo = ref({});
 const content = ref("");
 const lang = ref(DEFAULT_LANGUAGE);
 const previewTheme = ref(getMdPreviewTheme());
+const role = ref("");
+const contestId = computed(() => Number(route.query.contest_id || 0));
 
 // Ace Editor字体
 const fontSize = ref(14);
@@ -43,6 +46,21 @@ const languageOptions = computed(() => getLanguageOptions());
 
 // 计算属性来判断用户是否已经登录
 const userLoggedIn = computed(() => !!token.value);
+const canManageTestcases = computed(() => {
+  const currentRole = String(role.value || '').trim();
+  const ownerUserID = String(problemInfo.value.owner_user_id || '').trim();
+  return currentRole === 'admin' || (currentRole === 'teacher' && ownerUserID === String(userId.value || '').trim());
+});
+const displayTimeLimit = computed(() => {
+  const ms = Number(problemInfo.value.time_limit_ms || 0);
+  if (ms <= 0) return "-";
+  return `${ms / 1000}s`;
+});
+const displayMemoryLimit = computed(() => {
+  const mb = Number(problemInfo.value.memory_limit_mb || 0);
+  if (mb <= 0) return "-";
+  return `${mb}MB`;
+});
 
 // 监听主题变化
 const handleThemeChange = (event) => {
@@ -101,7 +119,7 @@ const uploadContentAsFile = async () => {
   });
   try {
     networkloading.value = true;
-    const resp = await uploadCode(codefile, route.params.problem_id);
+    const resp = await uploadCode(codefile, route.params.problem_id, contestId.value, lang.value);
     networkloading.value = false;
     showAlert(resp.data.message, "reload");
   } catch (error) {
@@ -122,8 +140,13 @@ onMounted(async () => {
   if (userLoggedIn.value) {
     try {
       const problemId = route.params.problem_id;
-      const resp = await getPbDetails(problemId);
+      const [problemResp, verifyResp] = await Promise.all([
+        getPbDetails(problemId, contestId.value),
+        verifyUserInfo(userName.value, token.value)
+      ]);
+      const resp = problemResp;
       problemInfo.value = resp.data.data;
+      role.value = verifyResp?.data?.data?.role || '';
     } catch (error) {
       showAlert(error.response.data.message, "");
     } finally {
@@ -179,6 +202,17 @@ onUnmounted(() => {
           </v-chip>
         </v-row>
       </v-col>
+      <template v-slot:append>
+        <v-btn
+          v-if="canManageTestcases"
+          color="secondary"
+          variant="tonal"
+          rounded="xl"
+          @click="$router.push({ path: `/problemset/${route.params.problem_id}/testcases/manage` })"
+        >
+          Manage Testcases
+        </v-btn>
+      </template>
     </v-app-bar>
 
     <v-container fluid class="problem-container">
@@ -194,7 +228,7 @@ onUnmounted(() => {
                     <v-card-text class="text-center pa-4">
                       <v-icon icon="mdi-clock-outline" size="24" color="primary" class="mb-2"></v-icon>
                       <div class="text-h6 font-weight-medium">
-                        {{ problemInfo.time_limit }}s
+                        {{ displayTimeLimit }}
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         {{ $t("message.timeLimit") }}
@@ -207,7 +241,7 @@ onUnmounted(() => {
                     <v-card-text class="text-center pa-4">
                       <v-icon icon="mdi-memory" size="24" color="primary" class="mb-2"></v-icon>
                       <div class="text-h6 font-weight-medium">
-                        {{ problemInfo.memory_limit }}MB
+                        {{ displayMemoryLimit }}
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         {{ $t("message.memoryLimit") }}

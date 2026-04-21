@@ -262,8 +262,16 @@ func (s *Service) ListContestProblems(ctx context.Context, req ports.ContestProb
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.ActorRole) != "admin" && contest.OwnerUserID != strings.TrimSpace(req.ActorUserID) {
-		return nil, ports.ErrForbidden
+	actorRole := strings.TrimSpace(req.ActorRole)
+	actorUserID := strings.TrimSpace(req.ActorUserID)
+	if actorRole != "admin" && contest.OwnerUserID != actorUserID {
+		membership, membershipErr := s.repo.GetParticipantByContestAndUser(ctx, req.ContestID, actorUserID)
+		if membershipErr != nil {
+			return nil, ports.ErrForbidden
+		}
+		if membership.Status == "quit" || membership.Status == "finished" {
+			return nil, ports.ErrForbidden
+		}
 	}
 
 	items, err := s.repo.ListProblemBindings(ctx, req.ContestID)

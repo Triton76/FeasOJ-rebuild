@@ -6,6 +6,7 @@ package handler
 import (
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -72,6 +73,28 @@ func (h Handlers) JudgeWriteback(c *gin.Context) {
 	}
 
 	resp, err := h.SubmitRecords.WritebackSubmission(c.Request.Context(), req)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}
+
+func (h Handlers) JudgeMarkSubmissionJudging(c *gin.Context) {
+	if h.JudgeWritebackToken != "" {
+		if strings.TrimSpace(c.GetHeader("X-Judge-Token")) != h.JudgeWritebackToken {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid judge token"})
+			return
+		}
+	}
+
+	submissionID, err := strconv.ParseInt(c.Param("submission_id"), 10, 64)
+	if err != nil || submissionID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid submission_id"})
+		return
+	}
+
+	resp, err := h.SubmitRecords.MarkSubmissionJudging(c.Request.Context(), submissionID, "judgecore")
 	if err != nil {
 		fail(c, err)
 		return

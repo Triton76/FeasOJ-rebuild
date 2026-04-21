@@ -11,6 +11,7 @@ type fakeBindingRepo struct {
 	contest          Contest
 	bindings         []ContestProblemBinding
 	existingProblems map[int64]bool
+	participants     map[string]Participant
 }
 
 func (r *fakeBindingRepo) ListVisible(ctx context.Context, offset, limit int, visibility, ruleType, status, actorUserID, actorRole string) ([]Contest, error) {
@@ -63,6 +64,9 @@ func (r *fakeBindingRepo) CreateParticipant(ctx context.Context, p Participant) 
 }
 
 func (r *fakeBindingRepo) GetParticipantByContestAndUser(ctx context.Context, contestID int64, userID string) (Participant, error) {
+	if p, ok := r.participants[userID]; ok {
+		return p, nil
+	}
 	return Participant{}, ports.ErrNotFound
 }
 
@@ -139,5 +143,45 @@ func TestUpdateContestPublishGateRequiresBindings(t *testing.T) {
 	})
 	if err != ports.ErrConflict {
 		t.Fatalf("expected ErrConflict when publishing without bindings, got %v", err)
+	}
+}
+
+func TestListContestProblemsAllowsActiveJoinedParticipant(t *testing.T) {
+	repo := &fakeBindingRepo{
+		contest:  Contest{ID: 10, OwnerUserID: "teacher-1"},
+		bindings: []ContestProblemBinding{{ContestID: 10, ProblemID: 1, DisplayOrder: 1, Alias: "A"}},
+		participants: map[string]Participant{
+			"student-1": {ContestID: 10, UserID: "student-1", Status: "registered"},
+		},
+	}
+	svc := NewService(repo)
+
+	resp, err := svc.ListContestProblems(context.Background(), ports.ContestProblemsQuery{
+		ContestID:   10,
+		ActorUserID: "student-1",
+		ActorRole:   "student",
+	})
+	if err != nil {
+		t.Fatalf("expected active participant access, got %v", err)
+	}
+	if len(resp) != 1 || resp[0].ProblemID != 1 {
+		t.Fatalf("unexpected bindings response: %+v", resp)
+	}
+}
+
+func TestListContestProblemsRejectsOutsider(t *testing.T) {
+	repo := &fakeBindingRepo{
+		contest:  Contest{ID: 10, OwnerUserID: "teacher-1"},
+		bindings: []ContestProblemBinding{{ContestID: 10, ProblemID: 1, DisplayOrder: 1, Alias: "A"}},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.ListContestProblems(context.Background(), ports.ContestProblemsQuery{
+		ContestID:   10,
+		ActorUserID: "outsider-1",
+		ActorRole:   "student",
+	})
+	if err != ports.ErrForbidden {
+		t.Fatalf("expected ErrForbidden for outsider, got %v", err)
 	}
 }

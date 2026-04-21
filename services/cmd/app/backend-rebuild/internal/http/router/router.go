@@ -61,6 +61,7 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.POST("/contests", h.CreateContest)
 	authed.GET("/contests/:contest_id", h.GetContest)
 	authed.GET("/contests/:contest_id/problems", h.ListContestProblems)
+	authed.GET("/contests/:contest_id/problems/:problem_id", h.GetContestProblem)
 	authed.PUT("/contests/:contest_id/problems", h.ReplaceContestProblems)
 	authed.GET("/contests/:contest_id/participant/self", h.GetContestMembership)
 	authed.GET("/contests/:contest_id/participants", h.ListContestParticipants)
@@ -85,8 +86,10 @@ func Register(r *gin.Engine, h handler.Handlers, cfg config.Config) {
 	authed.GET("/metrics/runtime", h.RuntimeMetrics)
 	if cfg.EnableJudgeWriteback {
 		api.POST("/judge/writeback", h.JudgeWriteback)
+		api.POST("/judge/submissions/:submission_id/judging", h.JudgeMarkSubmissionJudging)
 	}
 	if cfg.EnableTestcaseAPIs {
+		api.GET("/judge/problems/:problem_id/bundle", h.JudgeGetProblemBundle)
 		api.GET("/judge/problems/:problem_id/testcases", h.JudgeListTestcases)
 	}
 

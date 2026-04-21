@@ -4,7 +4,14 @@ service_name = "JudgeCore"
 service_id = "JudgeCore-1"
 
 [rabbitmq]
-host = "amqp://admin:Sing5200@127.0.0.1:5672/"
+host = "amqp://guest:guest@127.0.0.1:5672/"
+exchange = "judge.submission.exchange"
+main_queue = "judge.submission.main"
+prefetch = 1
+
+[backend_rebuild]
+base_url = "http://127.0.0.1:8082/api/v1"
+judge_token = ""
 
 [server]
 host = "127.0.0.1"

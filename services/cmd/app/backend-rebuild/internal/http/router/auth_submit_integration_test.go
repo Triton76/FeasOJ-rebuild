@@ -66,6 +66,58 @@ func (s *fakeSubmitService) WritebackSubmission(ctx context.Context, req ports.J
 	return ports.SubmissionDTO{ID: req.SubmissionID, Result: req.Result}, nil
 }
 
+type fakeJudgeProblemsService struct{}
+
+func (s fakeJudgeProblemsService) ListProblems(context.Context, ports.ProblemsQuery) ([]ports.ProblemDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeProblemsService) GetProblem(context.Context, int64) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeProblemsService) GetProblemForJudge(_ context.Context, problemID int64) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{ID: problemID, TimeLimitMS: 1000, MemoryLimitMB: 128}, nil
+}
+
+func (s fakeJudgeProblemsService) CreateProblem(context.Context, ports.CreateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeProblemsService) UpdateProblem(context.Context, ports.UpdateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeProblemsService) DeleteProblem(context.Context, ports.DeleteProblemRequest) error {
+	return ports.ErrNotImplemented
+}
+
+type fakeJudgeTestcasesService struct{}
+
+func (s fakeJudgeTestcasesService) CreateTestcase(context.Context, ports.CreateTestcaseRequest) (ports.TestcaseDTO, error) {
+	return ports.TestcaseDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeTestcasesService) ListTestcases(context.Context, ports.ListTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeTestcasesService) UpdateTestcase(context.Context, ports.UpdateTestcaseRequest) (ports.TestcaseDTO, error) {
+	return ports.TestcaseDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeTestcasesService) DeleteTestcase(context.Context, ports.DeleteTestcaseRequest) error {
+	return ports.ErrNotImplemented
+}
+
+func (s fakeJudgeTestcasesService) ReorderTestcases(context.Context, ports.ReorderTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (s fakeJudgeTestcasesService) ListTestcasesForJudge(context.Context, ports.JudgeListTestcasesRequest) ([]ports.TestcaseDTO, error) {
+	return []ports.TestcaseDTO{{ID: "tc-1", ProblemID: 1, InputData: "1 2", OutputData: "3", SortOrder: 1}}, nil
+}
+
 func TestAuthThenSubmitIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -150,5 +202,49 @@ func TestJudgeWritebackAuthFailureIntegration(t *testing.T) {
 	r.ServeHTTP(goodRec, goodReq)
 	if goodRec.Code != http.StatusOK {
 		t.Fatalf("expected 200 for valid token, got %d body=%s", goodRec.Code, goodRec.Body.String())
+	}
+}
+
+func TestJudgeProblemBundleAndMarkJudgingAuthIntegration(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	submitSvc := &fakeSubmitService{}
+	h := handler.New(handler.Handlers{
+		Auth:                fakeAuthService{},
+		Problems:            fakeJudgeProblemsService{},
+		Testcases:           fakeJudgeTestcasesService{},
+		SubmitRecords:       submitSvc,
+		JudgeWritebackToken: "judge-secret",
+	})
+
+	r := gin.New()
+	r.Use(gin.Recovery())
+	Register(r, h, config.Config{
+		JWTSecret:            "test-secret",
+		EnableJudgeWriteback: true,
+		EnableTestcaseAPIs:   true,
+	})
+
+	badBundleReq := httptest.NewRequest(http.MethodGet, "/api/v1/judge/problems/1/bundle", nil)
+	badBundleRec := httptest.NewRecorder()
+	r.ServeHTTP(badBundleRec, badBundleReq)
+	if badBundleRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for missing judge token, got %d body=%s", badBundleRec.Code, badBundleRec.Body.String())
+	}
+
+	goodBundleReq := httptest.NewRequest(http.MethodGet, "/api/v1/judge/problems/1/bundle", nil)
+	goodBundleReq.Header.Set("X-Judge-Token", "judge-secret")
+	goodBundleRec := httptest.NewRecorder()
+	r.ServeHTTP(goodBundleRec, goodBundleReq)
+	if goodBundleRec.Code != http.StatusOK || !strings.Contains(goodBundleRec.Body.String(), `"testcases"`) {
+		t.Fatalf("expected 200 bundle response, got %d body=%s", goodBundleRec.Code, goodBundleRec.Body.String())
+	}
+
+	goodMarkReq := httptest.NewRequest(http.MethodPost, "/api/v1/judge/submissions/1/judging", nil)
+	goodMarkReq.Header.Set("X-Judge-Token", "judge-secret")
+	goodMarkRec := httptest.NewRecorder()
+	r.ServeHTTP(goodMarkRec, goodMarkReq)
+	if goodMarkRec.Code != http.StatusOK || !strings.Contains(goodMarkRec.Body.String(), `"judging"`) {
+		t.Fatalf("expected 200 judging response, got %d body=%s", goodMarkRec.Code, goodMarkRec.Body.String())
 	}
 }

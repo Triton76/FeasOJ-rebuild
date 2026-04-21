@@ -82,6 +82,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			}
 
 			submissionQueue := queue.NewMemorySubmissionQueue()
+			rabbitQueueEnabled := false
 			if cfg.EnableRabbitMQQueue && cfg.RabbitMQURL != "" {
 				if rabbitQueue, err := queue.NewRabbitMQSubmissionQueue(queue.RabbitMQConfig{
 					URL:        cfg.RabbitMQURL,
@@ -94,6 +95,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 					log.Printf("[backend-rebuild] rabbitmq init failed, fallback to memory queue: %v", err)
 				} else {
 					submissionQueue = rabbitQueue
+					rabbitQueueEnabled = true
 					log.Println("[backend-rebuild] rabbitmq submission queue enabled")
 				}
 			}
@@ -107,7 +109,7 @@ func BuildRouter(cfg config.Config) *gin.Engine {
 			services.Discussions = discussionsusecase.NewService(discussionsRepository)
 			services.SubmitRecords = submitrecordsusecase.NewService(submitRecordsRepository, submissionQueue)
 			services.Testcases = testcasesusecase.NewService(testcasesRepository)
-			if cfg.EnableEmbeddedJudgeWorker && cfg.EnableJudgeWriteback {
+			if cfg.EnableJudgeWriteback && !rabbitQueueEnabled && (cfg.EnableEmbeddedJudgeWorker || cfg.EnableRabbitMQQueue) {
 				queue.NewJudgeWorker(submissionQueue, services.SubmitRecords, 300*time.Millisecond).Start(schedulerCtx)
 			}
 			scheduler.StartContestStatusReconciler(schedulerCtx, db, time.Duration(cfg.ContestStatusScanSeconds)*time.Second)

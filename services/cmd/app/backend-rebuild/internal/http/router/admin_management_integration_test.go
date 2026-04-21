@@ -67,6 +67,10 @@ func (s *fakeProblemsService) GetProblem(ctx context.Context, problemID int64) (
 	return item, nil
 }
 
+func (s *fakeProblemsService) GetProblemForJudge(ctx context.Context, problemID int64) (ports.ProblemDTO, error) {
+	return s.GetProblem(ctx, problemID)
+}
+
 func (s *fakeProblemsService) CreateProblem(ctx context.Context, req ports.CreateProblemRequest) (ports.ProblemDTO, error) {
 	id := s.nextID
 	s.nextID++

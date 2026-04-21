@@ -172,3 +172,34 @@ func (h Handlers) JudgeListTestcases(c *gin.Context) {
 	}
 	ok(c, resp)
 }
+
+func (h Handlers) JudgeGetProblemBundle(c *gin.Context) {
+	if h.JudgeWritebackToken != "" {
+		if strings.TrimSpace(c.GetHeader("X-Judge-Token")) != h.JudgeWritebackToken {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid judge token"})
+			return
+		}
+	}
+
+	problemID, err := strconv.ParseInt(c.Param("problem_id"), 10, 64)
+	if err != nil || problemID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid problem_id"})
+		return
+	}
+
+	problem, err := h.Problems.GetProblemForJudge(c.Request.Context(), problemID)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	testcases, err := h.Testcases.ListTestcasesForJudge(c.Request.Context(), ports.JudgeListTestcasesRequest{ProblemID: problemID})
+	if err != nil {
+		fail(c, err)
+		return
+	}
+
+	ok(c, gin.H{
+		"problem":   problem,
+		"testcases": testcases,
+	})
+}

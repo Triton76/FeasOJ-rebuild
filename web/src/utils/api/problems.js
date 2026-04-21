@@ -34,8 +34,11 @@ export const getDailyProblem = async () => {
 }
 
 // 获取题目详细信息
-export const getPbDetails = async (pid) => {
-    return await axios.get(`${apiUrl}/problems/${pid}`, {
+export const getPbDetails = async (pid, contestId = 0) => {
+    const path = Number(contestId) > 0
+        ? `${apiUrl}/contests/${contestId}/problems/${pid}`
+        : `${apiUrl}/problems/${pid}`;
+    return await axios.get(path, {
         headers: {
             ...authHeaders()
         }
@@ -43,12 +46,12 @@ export const getPbDetails = async (pid) => {
 }
 
 // 提交代码文件
-export const uploadCode = async (file, pid) => {
+export const uploadCode = async (file, pid, contestId = 0, languageName = 'C++') => {
     const sourceCode = await file.text();
     const resp = await axios.post(`${apiUrl}/submit-records`, {
         problem_id: Number(pid),
-        contest_id: 0,
-        language: 'cpp',
+        contest_id: Number(contestId) || 0,
+        language: languageName,
         source_code: sourceCode
     }, {
         headers: {

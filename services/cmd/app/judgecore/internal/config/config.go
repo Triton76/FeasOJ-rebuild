@@ -17,7 +17,15 @@ type Consul struct {
 }
 
 type RabbitMQ struct {
-	Host string `toml:"host"`
+	Host      string `toml:"host"`
+	Exchange  string `toml:"exchange"`
+	MainQueue string `toml:"main_queue"`
+	Prefetch  int    `toml:"prefetch"`
+}
+
+type BackendRebuild struct {
+	BaseURL    string `toml:"base_url"`
+	JudgeToken string `toml:"judge_token"`
 }
 
 type Server struct {
@@ -47,11 +55,12 @@ type Database struct {
 
 // AppConfig 配置结构体
 type AppConfig struct {
-	Consul   Consul   `toml:"consul"`
-	RabbitMQ RabbitMQ `toml:"rabbitmq"`
-	Server   Server   `toml:"server"`
-	Sandbox  Sandbox  `toml:"sandbox"`
-	Database Database `toml:"database"`
+	Consul         Consul         `toml:"consul"`
+	RabbitMQ       RabbitMQ       `toml:"rabbitmq"`
+	BackendRebuild BackendRebuild `toml:"backend_rebuild"`
+	Server         Server         `toml:"server"`
+	Sandbox        Sandbox        `toml:"sandbox"`
+	Database       Database       `toml:"database"`
 }
 
 // LoadConfig 加载TOML配置文件
@@ -91,7 +100,14 @@ func createDefaultConfig(configPath string) error {
 			ServiceID:   "JudgeCore-1",
 		},
 		RabbitMQ: RabbitMQ{
-			Host: "amqp://rabbitmq:password@localhost:5672/",
+			Host:      "amqp://guest:guest@localhost:5672/",
+			Exchange:  "judge.submission.exchange",
+			MainQueue: "judge.submission.main",
+			Prefetch:  1,
+		},
+		BackendRebuild: BackendRebuild{
+			BaseURL:    "http://127.0.0.1:8082/api/v1",
+			JudgeToken: "",
 		},
 		Server: Server{
 			Host:        "127.0.0.1",

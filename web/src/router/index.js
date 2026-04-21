@@ -57,6 +57,13 @@ const routes = [
         }
     },
     {
+        path: '/problemset/:problem_id/testcases/manage',
+        component: () => import('../pages/Problem/ManageTestcases.vue'),
+        meta: {
+            titleKey: 'message.testcases'
+        }
+    },
+    {
         path: '/reset', component: () => import('../pages/Account/Reset.vue'),
         meta: {
             titleKey: 'message.resetpwd'
@@ -82,6 +89,13 @@ const routes = [
         },
         beforeEnter: (to, from, next) => {
             next();
+        }
+    },
+    {
+        path: '/competitions/:competition_id/problems/manage',
+        component: () => import('../pages/Competition/ManageProblems.vue'),
+        meta: {
+            titleKey: 'message.problem'
         }
     },
     {

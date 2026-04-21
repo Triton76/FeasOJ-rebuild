@@ -33,12 +33,6 @@ const itemsPerPage = ref(50);
 const batchDialog = ref(false)
 const batchInput = ref('')
 
-const testCaseHeaders = [
-    { title: t('message.input'), value: 'input_data', align: 'center' },
-    { title: t('message.output'), value: 'output_data', align: 'center' },
-    { title: t('message.operation'), value: 'actions', align: 'center', sortable: false }
-]
-
 const difficultyOptions = [
     { value: 0, label: t('message.easy') },
     { value: 1, label: t('message.medium') },
@@ -113,14 +107,14 @@ const addTestCase = () => {
 
 // 字段检查
 const validateFields = () => {
-    for (const key in problemFields) {
-        if (problemFields[key] === "" || (Array.isArray(problemFields[key]) && problemFields[key].length === 0)) {
-
-            showAlert(t("message.formCheckfailed") + "!", "");
-            return false;
-        }
-    }
-    if (problemFields.test_cases.some(testCase => testCase.output_data === "")) {
+    if (
+        problemFields.title === "" ||
+        problemFields.content === "" ||
+        problemFields.input === "" ||
+        problemFields.output === "" ||
+        !problemFields.time_limit_ms ||
+        !problemFields.memory_limit_mb
+    ) {
         showAlert(t("message.formCheckfailed") + "!", "");
         return false;
     }
@@ -233,6 +227,10 @@ const removeTestCaseAt = (index) => {
     problemFields.test_cases.splice(index, 1)
 }
 
+const goToManageTestcases = (pid) => {
+    window.location = `#/problemset/${pid}/testcases/manage`
+}
+
 onMounted(async () => {
     loading.value = true;
     try {
@@ -341,6 +339,8 @@ onUnmounted(() => {
                                     <td class="text-center pa-4">
                                         <v-btn @click="goToEditProblem(item.id)" variant="text" icon="mdi-pencil"
                                             size="small" color="primary"></v-btn>
+                                        <v-btn @click="goToManageTestcases(item.id)" variant="text" icon="mdi-file-document-edit-outline"
+                                            size="small" color="secondary"></v-btn>
                                     </td>
                                 </tr>
                             </template>
@@ -408,50 +408,19 @@ onUnmounted(() => {
                                 variant="solo-filled"></v-text-field>
                         </v-row>
                     </v-form>
-                    <!-- 输入输出测试样例表格与批量导入 -->
-                    <v-row>
-                        <v-col cols="12">
-                            <v-data-table :headers="testCaseHeaders" :items="problemFields.test_cases" class="mb-2"
-                                hide-default-footer>
-                                <template v-slot:item.input_data="{ item, index }">
-                                    <v-text-field v-model="item.input_data" variant="solo-filled" density="compact"
-                                        hide-details></v-text-field>
-                                </template>
-                                <template v-slot:item.output_data="{ item, index }">
-                                    <v-text-field v-model="item.output_data" variant="solo-filled" density="compact"
-                                        hide-details></v-text-field>
-                                </template>
-                                <template v-slot:item.actions="{ index }">
-                                    <v-btn icon="mdi-delete" color="error" @click="removeTestCaseAt(index)"
-                                        size="small"></v-btn>
-                                </template>
-                            </v-data-table>
-                            <v-btn @click="batchDialog = true" color="primary" rounded="xl" style="margin-right: 10px;">
-                                {{ $t('message.batchImportTestCases') }}
-                            </v-btn>
-                            <v-btn @click="addTestCase" color="primary" rounded="xl">{{ $t('message.addTestCase')
-                                }}</v-btn>
-                        </v-col>
-                    </v-row>
-                    <!-- 批量导入对话框 -->
-                    <v-dialog v-model="batchDialog" max-width="600px">
-                        <v-card>
-                            <v-card-title>{{ $t('message.batchImportTestCases') }}</v-card-title>
-                            <v-card-text>
-                                <div style="margin-bottom: 10px; color: #888; font-size: 14px;">
-                                    {{ $t('message.batchImportTip') }}
-                                </div>
-                                <v-textarea v-model="batchInput" rows="10" auto-grow
-                                    :placeholder="$t('message.batchImportPlaceholder')" />
-                            </v-card-text>
-                            <v-card-actions>
-                                <v-spacer></v-spacer>
-                                <v-btn color="primary" rounded="xl" @click="handleBatchImport">{{ $t('message.save')
-                                    }}</v-btn>
-                                <v-btn rounded="xl" @click="batchDialog = false">{{ $t('message.cancel') }}</v-btn>
-                            </v-card-actions>
-                        </v-card>
-                    </v-dialog>
+                    <v-alert type="info" variant="tonal" class="mt-4">
+                        Testcase authoring now uses the dedicated testcase manager so problem metadata and judge data stay in sync.
+                    </v-alert>
+                    <div class="mt-4">
+                        <v-btn
+                            v-if="!isCreate && problemFields.id"
+                            color="secondary"
+                            rounded="xl"
+                            @click="goToManageTestcases(problemFields.id)"
+                        >
+                            Manage Testcases
+                        </v-btn>
+                    </div>
                     <div style="position: fixed; bottom: 16px; right: 16px; z-index: 1000;">
                         <v-btn @click="dialog = false" rounded="xl" style="margin-right: 10px;">{{
                             $t('message.cancel') }}</v-btn>

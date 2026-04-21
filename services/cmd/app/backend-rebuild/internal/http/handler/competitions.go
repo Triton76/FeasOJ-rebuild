@@ -161,6 +161,77 @@ func (h Handlers) ListContestProblems(c *gin.Context) {
 	ok(c, resp)
 }
 
+func (h Handlers) GetContestProblem(c *gin.Context) {
+	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
+	if err != nil || contestID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid contest_id"})
+		return
+	}
+	problemID, err := strconv.ParseInt(c.Param("problem_id"), 10, 64)
+	if err != nil || problemID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid problem_id"})
+		return
+	}
+
+	actorUserID := c.GetString("auth_user_id")
+	if actorUserID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing auth_user_id"})
+		return
+	}
+	actorRole := c.GetString("auth_role")
+
+	contest, err := h.Competitions.GetContest(c.Request.Context(), contestID)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+
+	if actorRole != "admin" && contest.OwnerUserID != actorUserID {
+		membership, membershipErr := h.Competitions.GetContestMembership(c.Request.Context(), ports.ContestMembershipQuery{
+			ContestID:   contestID,
+			ActorUserID: actorUserID,
+			ActorRole:   actorRole,
+		})
+		if membershipErr != nil {
+			fail(c, membershipErr)
+			return
+		}
+		if !membership.Joined || membership.Status == "quit" || membership.Status == "finished" {
+			fail(c, ports.ErrForbidden)
+			return
+		}
+	}
+
+	bindings, err := h.Competitions.ListContestProblems(c.Request.Context(), ports.ContestProblemsQuery{
+		ContestID:   contestID,
+		ActorUserID: actorUserID,
+		ActorRole:   actorRole,
+	})
+	if err != nil {
+		fail(c, err)
+		return
+	}
+
+	bound := false
+	for _, item := range bindings {
+		if item.ProblemID == problemID {
+			bound = true
+			break
+		}
+	}
+	if !bound {
+		fail(c, ports.ErrNotFound)
+		return
+	}
+
+	resp, err := h.Problems.GetProblemForJudge(c.Request.Context(), problemID)
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	ok(c, resp)
+}
+
 func (h Handlers) ReplaceContestProblems(c *gin.Context) {
 	contestID, err := strconv.ParseInt(c.Param("contest_id"), 10, 64)
 	if err != nil {

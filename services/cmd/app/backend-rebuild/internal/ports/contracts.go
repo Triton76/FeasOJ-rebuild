@@ -34,6 +34,7 @@ type ClassesService interface {
 type ProblemsService interface {
 	ListProblems(ctx context.Context, req ProblemsQuery) ([]ProblemDTO, error)
 	GetProblem(ctx context.Context, problemID int64) (ProblemDTO, error)
+	GetProblemForJudge(ctx context.Context, problemID int64) (ProblemDTO, error)
 	CreateProblem(ctx context.Context, req CreateProblemRequest) (ProblemDTO, error)
 	UpdateProblem(ctx context.Context, req UpdateProblemRequest) (ProblemDTO, error)
 	DeleteProblem(ctx context.Context, req DeleteProblemRequest) error

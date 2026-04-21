@@ -15,8 +15,9 @@ scheduler:
 feature_flags:
   enable_judge_writeback: true
   enable_scoreboard: true
-  enable_rabbitmq_queue: false
-  enable_embedded_judge_worker: true
+  enable_testcase_apis: true
+  enable_rabbitmq_queue: true
+  enable_embedded_judge_worker: false
   enable_password_reset: false
   enable_class_workflow_v2: true
   enable_avatar_upload: true

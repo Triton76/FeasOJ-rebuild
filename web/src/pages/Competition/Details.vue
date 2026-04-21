@@ -1,10 +1,11 @@
 <script setup>
 import { onMounted, ref, computed, onUnmounted } from 'vue';
 import { useI18n } from "vue-i18n";
-import { token } from '../../utils/account';
+import { token, userId, userName } from '../../utils/account';
 import { showAlert } from '../../utils/alert';
 import { useRoute, useRouter } from 'vue-router';
 import { getCompetitionById, getCompetitionProblems, getCompetitionUsers, isInCompetition, quitCompetition } from '../../utils/api/competitions';
+import { verifyUserInfo } from '../../utils/api/auth';
 import { avatarServer } from '../../utils/axios';
 import { MdPreview } from 'md-editor-v3';
 import { getMdPreviewTheme } from '../../utils/theme';
@@ -35,6 +36,7 @@ const problems = ref([]);
 const participantsError = ref('');
 const problemsError = ref('');
 const joined = ref(false);
+const role = ref('');
 
 // 显示题目状态
 const compStatus = (status) => {
@@ -81,18 +83,32 @@ const isContestEnded = computed(() => {
     return moment().isSameOrAfter(moment(contestInfo.value.end_at));
 });
 
+const canManageProblems = computed(() => {
+    const currentRole = String(role.value || '').trim();
+    const ownerUserID = String(contestInfo.value.owner_user_id || '').trim();
+    return currentRole === 'admin' || ((currentRole === 'teacher' || currentRole === 'admin') && ownerUserID === String(userId.value || '').trim());
+});
+
 onMounted(async () => {
     loading.value = true;
     if (userLoggedIn.value) {
         try {
-            const resp = await getCompetitionById(competitionId);
-            contestInfo.value = resp?.data?.data || {};
-
-            const [membershipRes, problemsRes, participantsRes] = await Promise.allSettled([
+            const [verifyResp, contestResp, membershipRes, problemsRes, participantsRes] = await Promise.allSettled([
+                verifyUserInfo(userName.value, token.value),
+                getCompetitionById(competitionId),
                 isInCompetition(competitionId),
                 getCompetitionProblems(competitionId),
                 getCompetitionUsers(competitionId)
             ]);
+
+            if (verifyResp.status === 'fulfilled') {
+                role.value = verifyResp.value?.data?.data?.role || '';
+            }
+            if (contestResp.status === 'fulfilled') {
+                contestInfo.value = contestResp.value?.data?.data || {};
+            } else {
+                throw contestResp.reason;
+            }
 
             if (membershipRes.status === 'fulfilled') {
                 joined.value = Boolean(membershipRes.value?.data?.data?.joined);
@@ -185,6 +201,16 @@ onUnmounted(() => {
                 <p>{{ contestInfo.subtitle }}</p>
             </v-col>
             <template v-slot:append>
+                <v-btn
+                    v-if="canManageProblems"
+                    color="secondary"
+                    variant="tonal"
+                    rounded="xl"
+                    class="me-2"
+                    @click="router.push({ path: `/competitions/${competitionId}/problems/manage` })"
+                >
+                    Manage Problems
+                </v-btn>
                 <v-btn v-if="!isContestEnded && joined" color="primary" variant="flat" rounded="xl" @click="quitDialog = true">{{ t('message.quit')
                     }}</v-btn>
             </template>
@@ -223,7 +249,7 @@ onUnmounted(() => {
                                 <v-list-item v-for="p in problems" :key="p.id">
                                     <v-list-item-title>
                                         <v-btn variant="text" color="primary" block
-                                            @click="router.push({ path: `/problemset/${p.id}` })">
+                                            @click="router.push({ path: `/problemset/${p.id}`, query: { contest_id: competitionId } })">
                                             {{ p.title }}
                                         </v-btn>
                                     </v-list-item-title>

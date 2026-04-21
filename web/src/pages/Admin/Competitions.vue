@@ -426,6 +426,14 @@ onUnmounted(() => {
                                                         </div>
                                                     </template>
                                                 </v-list-item>
+                                                <v-list-item @click="router.push({ path: `/competitions/${item.id}/problems/manage` })">
+                                                    <template v-slot:default="{ active, toggle }">
+                                                        <div class="d-flex align-center">
+                                                            <v-icon icon="mdi-link-variant" class="me-2"></v-icon>
+                                                            <v-list-item-title>Manage Problems</v-list-item-title>
+                                                        </div>
+                                                    </template>
+                                                </v-list-item>
                                             </v-list>
                                         </v-menu>
                                     </td>

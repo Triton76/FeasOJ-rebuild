@@ -47,13 +47,6 @@ func main() {
 		log.Fatalf("[FeasOJ] Failed to load config: %v", err)
 	}
 
-	// 初始化数据库
-	db, err := utils.ConnectSql(cfg.Database)
-	if err != nil {
-		log.Fatalf("[FeasOJ] Database initialization failed: %v", err)
-	}
-	log.Println("[FeasOJ] Database initialization complete")
-
 	// 初始化Consul客户端
 	consulConfig := api.DefaultConfig()
 	consulConfig.Address = cfg.Consul.Host
@@ -74,11 +67,11 @@ func main() {
 	judgePool.Initialize(cfg.Sandbox.MaxConcurrent)
 
 	// 启动Judge任务处理协程
-	go judge.ProcessJudgeTasks(cfg.RabbitMQ, db, judgePool)
+	go judge.ProcessJudgeTasks(cfg.RabbitMQ, cfg.BackendRebuild, judgePool, codeDir)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	server.LoadRouter(r, db, judgePool, codeDir)
+	server.LoadRouter(r, judgePool, codeDir)
 
 	go func() {
 		serverAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

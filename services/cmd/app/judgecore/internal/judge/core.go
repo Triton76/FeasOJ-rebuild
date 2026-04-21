@@ -2,8 +2,7 @@ package judge
 
 import (
 	"FeasOJ/app/judgecore/internal/global"
-	"FeasOJ/pkg/databases/tables"
-	"FeasOJ/pkg/structs"
+	"FeasOJ/app/judgecore/internal/utils"
 	"context"
 	"errors"
 	"fmt"
@@ -11,8 +10,6 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +18,11 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/moby/go-archive"
 )
+
+type JudgeTestcase struct {
+	InputData  string
+	OutputData string
+}
 
 // BuildImage 构建Sandbox
 func BuildImage(currentDir string) bool {
@@ -60,8 +62,8 @@ func BuildImage(currentDir string) bool {
 	return true
 }
 
-// CompileAndRun 编译并运行代�?
-func CompileAndRun(filename string, containerID string, problem *tables.Problems, testCases []*structs.TestCaseRequest) string {
+// CompileAndRun compiles and executes a submission against the provided bundle.
+func CompileAndRun(filename string, containerID string, problem utils.ProblemDTO, testCases []*JudgeTestcase) string {
 	taskDir := fmt.Sprintf("/workspace/task_%d", time.Now().UnixNano())
 
 	mkdirCmd := exec.Command("docker", "exec", containerID, "mkdir", "-p", taskDir)
@@ -198,28 +200,19 @@ func resetTaskDirectory(containerID, taskDir string) error {
 	return nil
 }
 
-func parseLimits(problem *tables.Problems) (timeLimit int, memoryLimit int, err error) {
-	re := regexp.MustCompile(`\d+`)
-
-	timeMatches := re.FindAllString(problem.TimeLimit, -1)
-	if len(timeMatches) == 0 {
-		return 0, 0, fmt.Errorf("no time limit found")
-	}
-	timeLimit, err = strconv.Atoi(timeMatches[0])
-	if err != nil {
-		return 0, 0, err
+func parseLimits(problem utils.ProblemDTO) (timeLimit int, memoryLimit int, err error) {
+	if problem.TimeLimitMS <= 0 || problem.MemoryLimitMB <= 0 {
+		return 0, 0, fmt.Errorf("invalid problem limits")
 	}
 
-	memMatches := re.FindAllString(problem.MemoryLimit, -1)
-	if len(memMatches) == 0 {
-		return 0, 0, fmt.Errorf("no memory limit found")
+	timeLimit = problem.TimeLimitMS / 1000
+	if problem.TimeLimitMS%1000 != 0 {
+		timeLimit++
 	}
-	memoryLimitMB, err := strconv.Atoi(memMatches[0])
-	if err != nil {
-		return 0, 0, err
+	if timeLimit <= 0 {
+		timeLimit = 1
 	}
-	memoryLimit = memoryLimitMB * 1024 // 转换为KB
-
+	memoryLimit = problem.MemoryLimitMB * 1024
 	return timeLimit, memoryLimit, nil
 }
 

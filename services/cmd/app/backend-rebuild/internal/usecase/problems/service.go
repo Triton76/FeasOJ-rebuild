@@ -82,6 +82,21 @@ func (s *Service) GetProblem(ctx context.Context, problemID int64) (ports.Proble
 	return toProblemDTO(p), nil
 }
 
+func (s *Service) GetProblemForJudge(ctx context.Context, problemID int64) (ports.ProblemDTO, error) {
+	if s.repo == nil {
+		return ports.ProblemDTO{}, ports.ErrNotImplemented
+	}
+	if problemID <= 0 {
+		return ports.ProblemDTO{}, ports.ErrInvalidArgument
+	}
+
+	p, err := s.repo.GetByID(ctx, problemID)
+	if err != nil {
+		return ports.ProblemDTO{}, err
+	}
+	return toProblemDTO(p), nil
+}
+
 func (s *Service) CreateProblem(ctx context.Context, req ports.CreateProblemRequest) (ports.ProblemDTO, error) {
 	if s.repo == nil {
 		return ports.ProblemDTO{}, ports.ErrNotImplemented

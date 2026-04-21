@@ -114,6 +114,10 @@ func (ProblemsService) GetProblem(context.Context, int64) (ports.ProblemDTO, err
 	return ports.ProblemDTO{}, ports.ErrNotImplemented
 }
 
+func (ProblemsService) GetProblemForJudge(context.Context, int64) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
 func (ProblemsService) CreateProblem(context.Context, ports.CreateProblemRequest) (ports.ProblemDTO, error) {
 	return ports.ProblemDTO{}, ports.ErrNotImplemented
 }

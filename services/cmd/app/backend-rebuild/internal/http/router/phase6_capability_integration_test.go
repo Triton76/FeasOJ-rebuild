@@ -146,6 +146,32 @@ func (s *fakePhase6CompetitionsService) GetScoreboard(context.Context, ports.Con
 	return ports.ContestScoreboardResponse{}, nil
 }
 
+type fakePhase6ProblemsService struct{}
+
+func (s fakePhase6ProblemsService) ListProblems(context.Context, ports.ProblemsQuery) ([]ports.ProblemDTO, error) {
+	return nil, ports.ErrNotImplemented
+}
+
+func (s fakePhase6ProblemsService) GetProblem(context.Context, int64) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrForbidden
+}
+
+func (s fakePhase6ProblemsService) GetProblemForJudge(_ context.Context, problemID int64) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{ID: problemID, Title: "Contest Problem", TimeLimitMS: 1000, MemoryLimitMB: 128}, nil
+}
+
+func (s fakePhase6ProblemsService) CreateProblem(context.Context, ports.CreateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakePhase6ProblemsService) UpdateProblem(context.Context, ports.UpdateProblemRequest) (ports.ProblemDTO, error) {
+	return ports.ProblemDTO{}, ports.ErrNotImplemented
+}
+
+func (s fakePhase6ProblemsService) DeleteProblem(context.Context, ports.DeleteProblemRequest) error {
+	return ports.ErrNotImplemented
+}
+
 type fakePhase6DiscussionsService struct {
 	discussions map[string]ports.DiscussionDTO
 	comments    map[string]ports.CommentDTO
@@ -211,6 +237,7 @@ func TestContestMembershipParticipantsAndQuitSemantics(t *testing.T) {
 
 	h := handler.New(handler.Handlers{
 		Auth:         fakePhase6AuthService{},
+		Problems:     fakePhase6ProblemsService{},
 		Competitions: newFakePhase6CompetitionsService(),
 	})
 	r := gin.New()
@@ -251,6 +278,22 @@ func TestContestMembershipParticipantsAndQuitSemantics(t *testing.T) {
 	r.ServeHTTP(participantsRec, participantsReq)
 	if participantsRec.Code != http.StatusOK {
 		t.Fatalf("participants query failed status=%d body=%s", participantsRec.Code, participantsRec.Body.String())
+	}
+
+	problemsReq := httptest.NewRequest(http.MethodGet, "/api/v1/contests/1/problems", nil)
+	problemsReq.Header.Set("Authorization", "Bearer "+studentToken)
+	problemsRec := httptest.NewRecorder()
+	r.ServeHTTP(problemsRec, problemsReq)
+	if problemsRec.Code != http.StatusOK {
+		t.Fatalf("contest problems query failed status=%d body=%s", problemsRec.Code, problemsRec.Body.String())
+	}
+
+	contestProblemReq := httptest.NewRequest(http.MethodGet, "/api/v1/contests/1/problems/1001", nil)
+	contestProblemReq.Header.Set("Authorization", "Bearer "+studentToken)
+	contestProblemRec := httptest.NewRecorder()
+	r.ServeHTTP(contestProblemRec, contestProblemReq)
+	if contestProblemRec.Code != http.StatusOK || !strings.Contains(contestProblemRec.Body.String(), `"id":1001`) {
+		t.Fatalf("contest problem detail failed status=%d body=%s", contestProblemRec.Code, contestProblemRec.Body.String())
 	}
 
 	quitReq := httptest.NewRequest(http.MethodDelete, "/api/v1/contests/1/participant/self", nil)
