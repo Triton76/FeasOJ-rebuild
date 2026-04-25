@@ -14,7 +14,6 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hashicorp/consul/api"
 )
 
 func main() {
@@ -45,15 +44,6 @@ func main() {
 	cfg, err := config.LoadConfig(currentDir)
 	if err != nil {
 		log.Fatalf("[FeasOJ] Failed to load config: %v", err)
-	}
-
-	// 初始化Consul客户端
-	consulConfig := api.DefaultConfig()
-	consulConfig.Address = cfg.Consul.Host
-	log.Println("[FeasOJ] Connecting to Consul...")
-	consulClient, err := api.NewClient(consulConfig)
-	if err != nil {
-		log.Fatalf("[FeasOJ] Error connecting to Consul: %v", err)
 	}
 
 	// 构建沙盒镜像
@@ -87,11 +77,6 @@ func main() {
 			log.Fatalf("[FeasOJ] Server start error: %v\n", err)
 		}
 	}()
-
-	// 注册服务
-	if err := utils.RegService(consulClient, cfg.Consul, cfg.Server); err != nil {
-		log.Fatalf("[FeasOJ] Failed to register service with Consul: %v", err)
-	}
 
 	shutdown(logFile, judgePool)
 }

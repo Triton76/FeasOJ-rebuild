@@ -367,7 +367,8 @@ func (s *Service) GetContestMembership(ctx context.Context, req ports.ContestMem
 	if err != nil {
 		return ports.ContestMembershipDTO{}, err
 	}
-	return ports.ContestMembershipDTO{ContestID: req.ContestID, UserID: p.UserID, Joined: true, Status: p.Status}, nil
+	isActive := p.Status != "quit" && p.Status != "finished"
+	return ports.ContestMembershipDTO{ContestID: req.ContestID, UserID: p.UserID, Joined: isActive, Status: p.Status}, nil
 }
 
 func (s *Service) ListContestParticipants(ctx context.Context, req ports.ContestParticipantsQuery) ([]ports.ContestParticipantDetailDTO, error) {

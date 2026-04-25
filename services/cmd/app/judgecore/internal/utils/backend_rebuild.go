@@ -97,10 +97,37 @@ func (c *BackendRebuildClient) WritebackSubmission(ctx context.Context, submissi
 	return c.doJSON(ctx, http.MethodPost, fmt.Sprintf("%s/judge/writeback", c.baseURL), JudgeWritebackRequest{
 		ContractVersion: judgeWritebackContractV1,
 		SubmissionID:    submissionID,
-		Result:          result,
+		Result:          normalizeWritebackResult(result),
 		Score:           score,
 		Source:          "judgecore",
 	}, nil)
+}
+
+func normalizeWritebackResult(result string) string {
+	switch strings.TrimSpace(result) {
+	case "Accepted":
+		return "accepted"
+	case "Wrong Answer":
+		return "wrong_answer"
+	case "Compile Error":
+		return "compile_error"
+	case "Time Limit Exceeded":
+		return "time_limit_exceeded"
+	case "Memory Limit Exceeded":
+		return "memory_limit_exceeded"
+	case "Presentation Error":
+		return "presentation_error"
+	case "Output Limit Exceeded":
+		return "output_limit_exceeded"
+	case "Partially Accepted":
+		return "partially_accepted"
+	case "Runtime Error":
+		return "runtime_error"
+	case "System Error", "Error":
+		return "system_error"
+	default:
+		return strings.TrimSpace(result)
+	}
 }
 
 func (c *BackendRebuildClient) doJSON(ctx context.Context, method, url string, payload any, out any) error {

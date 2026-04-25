@@ -1,7 +1,7 @@
 <script setup>
 import { token } from "../../utils/account";
 import { ref, onMounted, computed } from "vue";
-import { getAllCompetitions, joinCompWithPwd, joinCompetition } from "../../utils/api/competitions";
+import { getAllCompetitions, isInCompetition, joinCompWithPwd, joinCompetition } from "../../utils/api/competitions";
 import { useI18n } from "vue-i18n";
 import moment from "moment";
 import { showAlert } from "../../utils/alert";
@@ -75,6 +75,19 @@ const joinComp = async (competitionId) => {
 // 选择竞赛并弹出对话框 
 const selectCompetition = async (contest) => {
     selectedId.value = contest.id;
+    try {
+        const membershipResp = await isInCompetition(contest.id);
+        if (membershipResp?.data?.data?.joined) {
+            router.push(`/competitions/${contest.id}`);
+            return;
+        }
+    } catch (error) {
+        const status = Number(error?.response?.status || 0);
+        if (status !== 404 && status !== 403) {
+            showAlert(resolveApiErrorMessage(error, {}, 'Unable to check contest membership'), '');
+            return;
+        }
+    }
     if (contest.is_encrypted) {
         withPwdDialog.value = true;
         return;

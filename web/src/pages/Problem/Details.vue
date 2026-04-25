@@ -1,7 +1,7 @@
 <!-- 题目详细页 -->
 <script setup>
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { getPbDetails, uploadCode } from "../../utils/api/problems";
 import { VAceEditor } from "vue3-ace-editor";
 import { showAlert } from "../../utils/alert";
@@ -24,6 +24,7 @@ const { t } = useI18n();
 const networkloading = ref(false);
 const id = "preview-only";
 const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
 const problemInfo = ref({});
 const content = ref("");
@@ -121,7 +122,8 @@ const uploadContentAsFile = async () => {
     networkloading.value = true;
     const resp = await uploadCode(codefile, route.params.problem_id, contestId.value, lang.value);
     networkloading.value = false;
-    showAlert(resp.data.message, "reload");
+    showAlert(resp.data.message, "");
+    router.push({ path: '/status' });
   } catch (error) {
     networkloading.value = false;
     showAlert(error.response.data.message, "");

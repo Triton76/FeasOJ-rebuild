@@ -21,7 +21,7 @@ const headers = ref([
   { title: t('message.rank'), value: 'rank', align: 'center', sortable: false, },
   { title: t('message.username'), value: 'username', align: 'center', sortable: false },
   { title: t('message.synopsis'), value: 'synopsis', align: 'center', sortable: false },
-  { title: 'Score', value: 'score', align: 'center', sortable: false, },
+  { title: 'Rating', value: 'score', align: 'center', sortable: false, },
 ])
 
 // 从后端获取数据

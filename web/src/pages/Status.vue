@@ -1,7 +1,12 @@
 <!-- 状态页 -->
 <script setup>
 import { getSubmitRecords } from '../utils/api/submit_records.js';
-import { getResultStyle, getResultChipColor } from '../utils/dynamic_styles.js';
+import {
+  formatSubmissionResultLabel,
+  getResultStyle,
+  getResultChipColor,
+  isSubmissionInFlight,
+} from '../utils/dynamic_styles.js';
 import { onMounted, computed, ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showAlert } from '../utils/alert.js';
@@ -28,6 +33,7 @@ const headers = ref([
 const submitrecords = ref([])
 const submitRecordsLength = ref(0)
 const loading = ref(true)
+const pollTimer = ref(null)
 
 const id = 'preview-only';
 const dialog = ref(false);
@@ -58,6 +64,28 @@ const fetchData = async () => {
   }
 }
 
+const hasInFlightRows = () => submitrecords.value.some((item) => isSubmissionInFlight(item.result));
+
+const startPolling = () => {
+  if (pollTimer.value) {
+    return;
+  }
+  pollTimer.value = window.setInterval(async () => {
+    if (!userLoggedIn.value || !hasInFlightRows()) {
+      return;
+    }
+    await fetchData();
+  }, 3000);
+};
+
+const stopPolling = () => {
+  if (!pollTimer.value) {
+    return;
+  }
+  window.clearInterval(pollTimer.value);
+  pollTimer.value = null;
+};
+
 // 格式化代码
 const formatAsFencedCode = (code, lang = '') => {
   return `\`\`\`${lang}
@@ -86,6 +114,7 @@ onMounted(async () => {
     return;
   }
   await fetchData()
+  startPolling();
 
   // 监听主题变化
   window.addEventListener('theme-change', handleThemeChange);
@@ -94,6 +123,7 @@ onMounted(async () => {
 onUnmounted(() => {
   // 清理事件监听器
   window.removeEventListener('theme-change', handleThemeChange);
+  stopPolling();
 });
 </script>
 
@@ -132,14 +162,14 @@ onUnmounted(() => {
                       {{ item.user_id }}
                     </v-btn>
                   </td>
-                  <td v-if="item.result === 'pending' || item.result === 'judging'" class="text-center pa-4">
+                  <td v-if="isSubmissionInFlight(item.result)" class="text-center pa-4">
                     <v-progress-circular indeterminate color="primary" size="24" width="2"></v-progress-circular>
                   </td>
                   <td v-else :style="getResultStyle(item.result)" @click="showCode('', item.language)"
                     class="text-center pa-4 result-cell">
                     <v-chip :color="getResultChipColor(item.result)" variant="tonal" size="small"
                       class="font-weight-medium">
-                      {{ item.result }}
+                      {{ formatSubmissionResultLabel(item.result) }}
                     </v-chip>
                   </td>
                   <td class="text-center pa-4">

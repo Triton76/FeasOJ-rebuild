@@ -4,6 +4,7 @@ import (
 	"FeasOJ/app/backend-rebuild/internal/observability"
 	"FeasOJ/app/backend-rebuild/internal/ports"
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -99,6 +100,13 @@ func (s *Service) CreateSubmission(ctx context.Context, req ports.CreateSubmissi
 			"submission_id": item.ID,
 			"error":         err.Error(),
 		})
+		if _, updateErr := s.repo.UpdateJudgeResult(ctx, item.ID, SubmissionResultSystemError, nil); updateErr != nil {
+			observability.LogJSON("submission.enqueue_failed_mark_system_error", map[string]any{
+				"submission_id": item.ID,
+				"error":         updateErr.Error(),
+			})
+		}
+		return ports.SubmissionDTO{}, fmt.Errorf("enqueue submission failed: %w", err)
 	} else {
 		observability.LogJSON("submission.enqueue_ok", map[string]any{
 			"submission_id": item.ID,
@@ -230,6 +238,9 @@ func isValidTransition(from, to string) bool {
 		return true
 	}
 	if from == SubmissionResultPending && to == SubmissionResultJudging {
+		return true
+	}
+	if from == SubmissionResultPending && isTerminalResult(to) {
 		return true
 	}
 	if from == SubmissionResultJudging && isTerminalResult(to) {

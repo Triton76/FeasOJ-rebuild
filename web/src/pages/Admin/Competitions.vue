@@ -80,8 +80,8 @@ const scoreHeaders = ref([
     { title: 'Rank', value: 'rank', align: 'center' },
     { title: t('message.username'), value: 'username', align: 'center' },
     { title: 'Solved', value: 'solved', align: 'center' },
-    { title: 'Total Score', value: 'total_score', align: 'center' },
-    { title: 'Penalty', value: 'penalty_minutes', align: 'center' },
+    { title: 'Contest Points', value: 'total_score', align: 'center' },
+    { title: 'Penalty (min)', value: 'penalty_minutes', align: 'center' },
 ])
 
 // 分页后的数据

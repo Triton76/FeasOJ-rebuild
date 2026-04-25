@@ -49,7 +49,7 @@ type contestProblemRow struct {
 	ContestID    int64     `gorm:"column:contest_id"`
 	ProblemID    int64     `gorm:"column:problem_id"`
 	DisplayOrder int       `gorm:"column:display_order"`
-	Alias        string    `gorm:"column:alias"`
+	Alias        *string   `gorm:"column:alias"`
 	CreatedAt    time.Time `gorm:"column:created_at"`
 	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
@@ -206,11 +206,15 @@ func (r *Repository) ListProblemBindings(ctx context.Context, contestID int64) (
 
 	resp := make([]competitionsusecase.ContestProblemBinding, 0, len(rows))
 	for _, row := range rows {
+		alias := ""
+		if row.Alias != nil {
+			alias = *row.Alias
+		}
 		resp = append(resp, competitionsusecase.ContestProblemBinding{
 			ContestID:    row.ContestID,
 			ProblemID:    row.ProblemID,
 			DisplayOrder: row.DisplayOrder,
-			Alias:        row.Alias,
+			Alias:        alias,
 			CreatedAt:    row.CreatedAt,
 			UpdatedAt:    row.UpdatedAt,
 		})
@@ -229,12 +233,17 @@ func (r *Repository) ReplaceProblemBindings(ctx context.Context, contestID int64
 
 		rows := make([]contestProblemRow, 0, len(items))
 		for _, item := range items {
+			alias := strings.TrimSpace(item.Alias)
+			var aliasPtr *string
+			if alias != "" {
+				aliasPtr = &alias
+			}
 			rows = append(rows, contestProblemRow{
 				ID:           uuid.NewString(),
 				ContestID:    contestID,
 				ProblemID:    item.ProblemID,
 				DisplayOrder: item.DisplayOrder,
-				Alias:        strings.TrimSpace(item.Alias),
+				Alias:        aliasPtr,
 				CreatedAt:    item.CreatedAt,
 				UpdatedAt:    item.UpdatedAt,
 			})

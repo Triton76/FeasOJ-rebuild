@@ -1,8 +1,3 @@
-[consul]
-host = "127.0.0.1:8500"
-service_name = "JudgeCore"
-service_id = "JudgeCore-1"
-
 [rabbitmq]
 host = "amqp://guest:guest@127.0.0.1:5672/"
 exchange = "judge.submission.exchange"

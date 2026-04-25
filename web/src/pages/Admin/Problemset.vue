@@ -2,7 +2,7 @@
 <script setup>
 import { ref, onMounted, computed, reactive, onUnmounted } from 'vue'
 import { token, userName } from '../../utils/account'
-import { getProblemAllInfoByAdmin, updateProblemInfo, deleteProblemAllInfo, getAllCompetitionsInfo, getAllProblemsAdmin } from '../../utils/api/admin';
+import { getProblemAllInfoByAdmin, updateProblemInfo, deleteProblemAllInfo, getAllProblemsAdmin } from '../../utils/api/admin';
 import { verifyUserInfo } from '../../utils/api/auth';
 import { showAlert } from '../../utils/alert';
 import { MdEditor } from 'md-editor-v3';
@@ -24,7 +24,6 @@ const delDialog = ref(false)
 const userPrivilege = ref("")
 const problems = ref([])
 const totalProblems = ref(0)
-const competitionIds = ref([0])
 const dialog = ref(false)
 const editorTheme = ref(getMdEditorTheme());
 const searchQuery = ref('');
@@ -58,7 +57,7 @@ const headers = ref([
     { title: 'ID', value: 'id', align: 'center', sortable: false },
     { title: t('message.problem'), value: 'title', align: 'center', sortable: false },
     { title: t('message.difficulty'), value: 'difficulty', align: 'center', sortable: false },
-    { title: t('message.contestid'), value: 'class_id', align: 'center', sortable: false },
+    { title: 'Class ID', value: 'class_id', align: 'center', sortable: false },
     { title: t('message.isvisible'), value: 'visibility', align: 'center', sortable: false },
     { title: t('message.operation'), value: 'actions', align: 'center', sortable: false },
 ])
@@ -170,8 +169,6 @@ const createProblem = async () => {
     problemFields.visibility = 'public';
     problemFields.status = 'published';
     problemFields.test_cases = [{ input_data: '', output_data: '' }];
-    const compResp = await getAllCompetitionsInfo();
-    competitionIds.value = ["", ...compResp.data.data.map(data => String(data.id))];
     networkloading.value = false;
 }
 
@@ -188,8 +185,6 @@ const goToEditProblem = async (pid) => {
         visibility: problemResp.data.data.visibility || 'public',
         status: problemResp.data.data.status || 'published'
     });
-    const compResp = await getAllCompetitionsInfo();
-    competitionIds.value = ["", ...compResp.data.data.map(data => String(data.id))];
     networkloading.value = false;
 };
 
@@ -383,10 +378,15 @@ onUnmounted(() => {
                         <v-select :items="difficultyOptions" item-title="label" item-value="value"
                             :label="$t('message.difficulty')" v-model="problemFields.difficulty"
                             variant="solo-filled" />
-                        <!-- 所属竞赛ID及是否可见 -->
+                        <!-- 所属班级ID及是否可见 -->
                         <v-row class="limitRow">
-                            <v-select :items="competitionIds" :label="$t('message.contestid')"
-                                v-model="problemFields.class_id" variant="solo-filled"></v-select>
+                            <v-text-field
+                                label="Class ID"
+                                hint="Optional. This field binds the problem to a class, not a contest."
+                                persistent-hint
+                                v-model="problemFields.class_id"
+                                variant="solo-filled"
+                            ></v-text-field>
                             <div style="margin-inline: 30px;"></div>
                             <v-switch v-model="problemFields.visibility" true-value="public" false-value="private" :label="$t('message.isvisible')"
                                 color="primary" inset></v-switch>
@@ -408,6 +408,9 @@ onUnmounted(() => {
                                 variant="solo-filled"></v-text-field>
                         </v-row>
                     </v-form>
+                    <v-alert type="info" variant="tonal" class="mt-4">
+                        Contest binding is managed from the contest page. Use this editor for problem metadata and class scope only.
+                    </v-alert>
                     <v-alert type="info" variant="tonal" class="mt-4">
                         Testcase authoring now uses the dedicated testcase manager so problem metadata and judge data stay in sync.
                     </v-alert>

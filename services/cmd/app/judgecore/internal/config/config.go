@@ -10,12 +10,6 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-type Consul struct {
-	Host        string `toml:"host"`
-	ServiceName string `toml:"service_name"`
-	ServiceID   string `toml:"service_id"`
-}
-
 type RabbitMQ struct {
 	Host      string `toml:"host"`
 	Exchange  string `toml:"exchange"`
@@ -55,7 +49,6 @@ type Database struct {
 
 // AppConfig 配置结构体
 type AppConfig struct {
-	Consul         Consul         `toml:"consul"`
 	RabbitMQ       RabbitMQ       `toml:"rabbitmq"`
 	BackendRebuild BackendRebuild `toml:"backend_rebuild"`
 	Server         Server         `toml:"server"`
@@ -94,11 +87,6 @@ func LoadConfig(currentDir string) (*AppConfig, error) {
 // createDefaultConfig 创建默认配置文件
 func createDefaultConfig(configPath string) error {
 	defaultConfig := AppConfig{
-		Consul: Consul{
-			Host:        "127.0.0.1:8500",
-			ServiceName: "JudgeCore",
-			ServiceID:   "JudgeCore-1",
-		},
 		RabbitMQ: RabbitMQ{
 			Host:      "amqp://guest:guest@localhost:5672/",
 			Exchange:  "judge.submission.exchange",

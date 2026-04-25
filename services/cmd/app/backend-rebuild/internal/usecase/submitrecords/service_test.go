@@ -225,7 +225,7 @@ func TestJudgeWritebackRejectsTerminalRollback(t *testing.T) {
 	}
 }
 
-func TestJudgeWritebackRejectsPendingToTerminal(t *testing.T) {
+func TestJudgeWritebackAllowsPendingToTerminal(t *testing.T) {
 	repo := newFakeSubmitRepo()
 	svc := NewService(repo, queue.NewMemorySubmissionQueue())
 
@@ -239,12 +239,20 @@ func TestJudgeWritebackRejectsPendingToTerminal(t *testing.T) {
 		t.Fatalf("create submission failed: %v", err)
 	}
 
-	_, err = svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
+	score := 80
+	updated, err := svc.WritebackSubmission(context.Background(), ports.JudgeWritebackRequest{
 		SubmissionID: created.ID,
 		Result:       SubmissionResultAccepted,
+		Score:        &score,
 		Source:       "judgecore",
 	})
-	if !errors.Is(err, ports.ErrConflict) {
-		t.Fatalf("expected ErrConflict for pending->terminal writeback, got %v", err)
+	if err != nil {
+		t.Fatalf("pending->terminal writeback should succeed, got %v", err)
+	}
+	if updated.Result != SubmissionResultAccepted {
+		t.Fatalf("expected accepted result, got %s", updated.Result)
+	}
+	if updated.Score != score {
+		t.Fatalf("expected score %d, got %d", score, updated.Score)
 	}
 }
